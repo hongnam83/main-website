@@ -3,8 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Import data
-import { categories } from '../src/data/products.ts';
-import { blogPosts } from '../src/data/blogPosts.ts';
+import { categories } from '../src/data/products';
+import { blogPosts } from '../src/data/blogPosts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

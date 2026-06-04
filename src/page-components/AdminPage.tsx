@@ -6,6 +6,7 @@ import { categories as defaultCategories } from '../data/products';
 import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
 import AdminUsersManager from '../components/AdminUsersManager';
 import SiteSettingsManager from '../components/SiteSettingsManager';
+import Link from 'next/link';
 
 const AdminLoadingSkeleton = () => (
   <div className="w-full flex flex-col gap-6 animate-pulse">
@@ -64,9 +65,9 @@ const AdminLayout = ({ children, activeTab, setActiveTab, user, onLogout }: any)
                 {tab === 'Admin Users' && 'Thành viên Quản trị'}
               </button>
             ))}
-            <a href="/" className="block mt-12 px-6 text-sm text-gray-400 hover:text-white">
+            <Link href="/" className="block mt-12 px-6 text-sm text-gray-400 hover:text-white">
               ← Trở về trang web
-            </a>
+            </Link>
           </nav>
         </div>
         
@@ -420,6 +421,7 @@ const GenericCollectionManager = ({ title, collectionName, fields }: any) => {
 
   useEffect(() => {
     fetchItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectionName]);
 
   async function fetchItems() {
@@ -881,7 +883,7 @@ export default function AdminPage() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser: any) => {
       if (currentUser) {
         const loginTime = localStorage.getItem('adminLoginTime');
         if (loginTime) {

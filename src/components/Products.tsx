@@ -159,7 +159,7 @@ export default function Products() {
               )}
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {category.products?.map((product, pIndex) => (
+                {category.products?.map((product: any, pIndex: number) => (
                   <ProductCard key={product?.id || pIndex} product={product} />
                 ))}
               </div>
