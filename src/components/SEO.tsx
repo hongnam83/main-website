@@ -10,10 +10,14 @@ interface SEOProps {
   schema?: any;
 }
 
+import { useEffect } from 'react';
+
 export default function SEO({ title, description, schema }: SEOProps) {
-  if (typeof document !== 'undefined' && title) {
-    document.title = title.includes('FURANO') ? title : `${title} | FURANO - Chăm sóc hàm răng chuyên biệt`;
-  }
+  useEffect(() => {
+    if (typeof document !== 'undefined' && title) {
+      document.title = title.includes('FURANO') ? title : `${title} | FURANO - Chăm sóc hàm răng chuyên biệt`;
+    }
+  }, [title]);
 
   return schema ? (
     <script

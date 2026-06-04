@@ -93,7 +93,7 @@ export default function Testimonials() {
                 </div>
                 
                 <p className="text-brand-50 text-lg md:text-xl leading-relaxed italic relative z-10 flex-grow">
-                  "{t(testimonials[currentIndex].content)}"
+                  &quot;{t(testimonials[currentIndex].content)}&quot;
                 </p>
 
                 <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">

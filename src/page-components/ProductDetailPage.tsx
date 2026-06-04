@@ -15,6 +15,7 @@ export default function ProductDetailPage({ params }: { params?: { id?: string }
 
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedVariant, setSelectedVariant] = useState(0);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -27,9 +28,11 @@ export default function ProductDetailPage({ params }: { params?: { id?: string }
         }
         const found = allCategories.flatMap(cat => cat.products || []).find((p: any) => p.id === id);
         setProduct(found || null);
+        setSelectedVariant(0);
       } catch (err) {
         const found = defaultCategories.flatMap(cat => cat.products || []).find((p: any) => p.id === id);
         setProduct(found || null);
+        setSelectedVariant(0);
       } finally {
         setLoading(false);
       }
@@ -39,7 +42,6 @@ export default function ProductDetailPage({ params }: { params?: { id?: string }
   }, [id]);
 
   const hasVariants = product?.variants && product.variants.length > 0;
-  const [selectedVariant, setSelectedVariant] = useState(0);
 
   const safeVariantIndex = useMemo(() => {
     if (!hasVariants || !product?.variants) return 0;
@@ -47,7 +49,7 @@ export default function ProductDetailPage({ params }: { params?: { id?: string }
   }, [selectedVariant, hasVariants, product?.variants]);
 
   useEffect(() => {
-    setSelectedVariant(0);
+    // moved to fetch fn
   }, [product?.id]);
 
   if (loading) {
