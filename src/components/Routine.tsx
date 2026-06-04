@@ -53,17 +53,17 @@ export default function Routine() {
               transition={{ duration: 0.5, delay: i * 0.2 }}
               className="text-center group"
             >
-              <div className="relative w-48 h-48 mx-auto mb-8 rounded-full bg-brand-50 p-2 shadow-xl group-hover:-translate-y-2 transition-transform duration-300">
+              <div className="relative w-56 h-56 mx-auto mb-8 rounded-full bg-gradient-to-tr from-brand-100 to-brand-50 p-2 shadow-sm group-hover:shadow-2xl group-hover:shadow-brand-500/20 group-hover:-translate-y-3 transition-all duration-500">
                 <img 
                   src={step.img} 
                   alt={step.title} 
-                  className="w-full h-full object-cover rounded-full"
+                  className="w-full h-full object-cover rounded-full border-4 border-white"
                 />
-                <div className="absolute top-0 right-0 w-12 h-12 bg-brand-800 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-lg border-4 border-white">
+                <div className="absolute top-2 right-2 w-14 h-14 bg-gradient-to-br from-brand-700 to-brand-900 text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg border-4 border-white group-hover:scale-110 transition-transform">
                   {step.num}
                 </div>
               </div>
-              <h4 className="text-2xl font-bold text-gray-900 mb-4">{step.title}</h4>
+              <h4 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-brand-700 transition-colors">{step.title}</h4>
               <p className="text-gray-600 leading-relaxed max-w-sm mx-auto">{step.desc}</p>
             </motion.div>
           ))}

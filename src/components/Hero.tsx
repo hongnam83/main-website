@@ -25,32 +25,35 @@ export default function Hero() {
             transition={{ duration: 0.6 }}
             className="max-w-2xl"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-100 text-brand-800 font-medium text-sm mb-4">
-              <ShieldCheck className="w-4 h-4" />
-              <span className="tracking-wide">{t('Chuyên gia chăm sóc răng niềng', 'Chuyên gia chăm sóc răng niềng')}</span>
-            </div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-md text-brand-800 font-semibold text-sm mb-6 border border-brand-200/50 shadow-sm"
+            >
+              <ShieldCheck className="w-5 h-5 text-brand-500" />
+              <span className="tracking-wide uppercase text-xs">{t('Chuyên gia chăm sóc răng niềng', 'Chuyên gia chăm sóc răng niềng')}</span>
+            </motion.div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 mb-4 leading-[1.1]">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-gray-900 mb-6 leading-[1.15]">
               {t('Nụ Cười Hoàn Mỹ')} <br />
-              <span className="text-gradient font-serif italic text-5xl md:text-6xl xl:text-7xl pr-2">{t('Dành Riêng Cho')}</span><br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-800 font-serif italic pr-2">{t('Dành Riêng Cho')}</span><br />
               {t('Team Niềng Răng')}
             </h1>
             
-            <p className="text-base md:text-lg text-gray-600 mb-6 leading-relaxed max-w-lg">
+            <p className="text-base md:text-lg text-gray-600 mb-8 leading-relaxed max-w-lg">
               {t('Giải pháp chăm sóc toàn diện từ FURANO. Đánh bay mảng bám, ngăn ngừa viêm lợi và giữ nụ cười tự tin trong suốt thai kỳ chỉnh nha của bạn.')}
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row gap-4 mb-10">
               <Link
                 href="/products"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-white bg-brand-800 hover:bg-brand-900 rounded-full transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                className="group inline-flex items-center justify-center px-8 py-4 text-base font-medium text-white bg-gradient-to-r from-brand-800 to-brand-600 hover:from-brand-900 hover:to-brand-700 rounded-full transition-all shadow-lg hover:shadow-brand-800/30 hover:-translate-y-0.5"
               >
-                {t('Xem Danh Mục Sản Phẩm', 'Xem Danh Mục Sản Phẩm')}
-                <ArrowRight className="w-5 h-5 ml-2" />
+                {t('Khám Phá Sản Phẩm', 'Khám Phá Sản Phẩm')}
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
               <a
                 href="#routine"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-brand-800 bg-white border border-brand-200 hover:bg-brand-50 rounded-full transition-colors"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-brand-800 bg-white/50 backdrop-blur-sm border border-brand-200 hover:bg-white rounded-full shadow-sm hover:shadow-md transition-all"
               >
                 {t('Xem Chu Trình Chuẩn', 'Xem Chu Trình Chuẩn')}
               </a>
