@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { db, doc, getDoc, setDoc } from '../localDB';
+import { compressImage } from '../lib/imageUtils';
 
 export default function SiteSettingsManager() {
   const [settings, setSettings] = useState<any>({});
@@ -40,31 +41,16 @@ export default function SiteSettingsManager() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.src = reader.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let MAX_WIDTH = 1200; // Large images for site covers
-          if (img.width > MAX_WIDTH) {
-             const scaleSize = MAX_WIDTH / img.width;
-             canvas.width = MAX_WIDTH;
-             canvas.height = img.height * scaleSize;
-          } else {
-             canvas.width = img.width;
-             canvas.height = img.height;
-          }
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const compressedDataUrl = canvas.toDataURL('image/webp', 0.85);
-          handleChange(key, compressedDataUrl);
-        };
-      };
-      reader.readAsDataURL(file);
+      try {
+        // Medium size to prevent payload issues
+        const compressedDataUrl = await compressImage(file, 800, 0.8);
+        handleChange(key, compressedDataUrl);
+      } catch (err) {
+        console.error('Lỗi khi nén ảnh', err);
+      }
     }
   };
 

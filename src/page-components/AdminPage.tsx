@@ -7,6 +7,7 @@ import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
 import AdminUsersManager from '../components/AdminUsersManager';
 import SiteSettingsManager from '../components/SiteSettingsManager';
 import Link from 'next/link';
+import { compressImage } from '../lib/imageUtils';
 
 const AdminLoadingSkeleton = () => (
   <div className="w-full flex flex-col gap-6 animate-pulse">
@@ -258,32 +259,15 @@ const ItemModal = ({ item, fields, onSave, onClose, isProduct = false }: any) =>
                       <input 
                         type="file" 
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              const img = new Image();
-                              img.src = reader.result as string;
-                              img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                const MAX_WIDTH = 800; // Resize to max 800px width
-                                let targetWidth = img.width;
-                                let targetHeight = img.height;
-                                if (img.width > MAX_WIDTH) {
-                                  const scaleSize = MAX_WIDTH / img.width;
-                                  targetWidth = MAX_WIDTH;
-                                  targetHeight = img.height * scaleSize;
-                                }
-                                canvas.width = targetWidth;
-                                canvas.height = targetHeight;
-                                const ctx = canvas.getContext('2d');
-                                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                const compressedDataUrl = canvas.toDataURL('image/webp', 0.85);
-                                handleChange(field.name, compressedDataUrl);
-                              };
-                            };
-                            reader.readAsDataURL(file);
+                            try {
+                              const compressedDataUrl = await compressImage(file, 800);
+                              handleChange(field.name, compressedDataUrl);
+                            } catch (err) {
+                              console.error('Lỗi khi nén ảnh', err);
+                            }
                           }
                         }}
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
@@ -367,16 +351,17 @@ const ItemModal = ({ item, fields, onSave, onClose, isProduct = false }: any) =>
                              
                              <div className="flex gap-4 items-center">
                                {review.image && <img src={review.image} className="w-16 h-16 object-cover rounded-lg border" />}
-                               <input type="file" accept="image/*" onChange={(e) => {
+                               <input type="file" accept="image/*" onChange={async (e) => {
                                  const file = e.target.files?.[0];
                                  if (file) {
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => {
+                                    try {
+                                        const compressedDataUrl = await compressImage(file, 400, 0.8);
                                         const newVals = [...(val || [])];
-                                        newVals[idx] = { ...newVals[idx], image: reader.result };
+                                        newVals[idx] = { ...newVals[idx], image: compressedDataUrl };
                                         handleChange(field.name, newVals);
-                                    };
-                                    reader.readAsDataURL(file);
+                                    } catch (err) {
+                                        console.error('Lỗi khi nén ảnh', err);
+                                    }
                                  }
                                }} className="text-sm" />
                              </div>
