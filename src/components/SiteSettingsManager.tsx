@@ -59,7 +59,7 @@ export default function SiteSettingsManager() {
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="flex gap-4 items-start">
         {settings[key] ? (
-          <img src={settings[key]} className="w-48 h-24 object-cover rounded-lg border bg-gray-50 flex-shrink-0" />
+          <img src={settings[key]} alt="Settings Preview" className="w-48 h-24 object-cover rounded-lg border bg-gray-50 flex-shrink-0" />
         ) : (
           <div className="w-48 h-24 bg-gray-50 border rounded-lg flex items-center justify-center text-sm text-gray-400 flex-shrink-0">Chưa có ảnh</div>
         )}

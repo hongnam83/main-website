@@ -350,7 +350,7 @@ const ItemModal = ({ item, fields, onSave, onClose, isProduct = false }: any) =>
                                 }} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500" />
                              
                              <div className="flex gap-4 items-center">
-                               {review.image && <img src={review.image} className="w-16 h-16 object-cover rounded-lg border" />}
+                               {review.image && <img src={review.image} alt="Review" className="w-16 h-16 object-cover rounded-lg border" />}
                                <input type="file" accept="image/*" onChange={async (e) => {
                                  const file = e.target.files?.[0];
                                  if (file) {
@@ -712,7 +712,7 @@ const CategoriesProductsManager = () => {
                <div className="grid grid-cols-2 gap-4">
                   {selectedCat.products?.map((p: any) => (
                     <div key={p.id} onClick={() => setEditingProduct(p)} className="border rounded-xl p-3 flex gap-4 bg-white relative group cursor-pointer hover:border-brand-500 hover:shadow-md transition-all">
-                       <img src={p.image} className="w-20 h-20 object-cover rounded-lg border bg-gray-50" />
+                       <img src={p.image} alt={p.name} className="w-20 h-20 object-cover rounded-lg border bg-gray-50" />
                        <div className="flex-1">
                           <h4 className="font-bold text-sm mb-1 line-clamp-2">{p.name}</h4>
                           <p className="text-xs text-gray-500 line-clamp-1">{p.id}</p>
