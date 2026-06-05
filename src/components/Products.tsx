@@ -121,6 +121,18 @@ export default function Products() {
       }
     };
     fetchCats();
+
+    const handleUpdate = () => {
+      fetchCats();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('localDB_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('localDB_updated', handleUpdate);
+      }
+    };
   }, []);
   return (
     <section className="py-24 bg-gray-50" id="products">

@@ -28,8 +28,19 @@ export const SiteSettingsProvider = ({ children }: { children: React.ReactNode }
 
     fetchSettings();
 
+    const handleUpdate = () => {
+      fetchSettings();
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('localDB_updated', handleUpdate);
+    }
+
     return () => {
       isMounted = false;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('localDB_updated', handleUpdate);
+      }
     };
   }, []);
 

@@ -31,6 +31,18 @@ export default function BlogDetailPage({ params }: { params?: { id?: string } })
     };
     fetchPost();
     window.scrollTo(0, 0);
+
+    const handleUpdate = () => {
+      fetchPost();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('localDB_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('localDB_updated', handleUpdate);
+      }
+    };
   }, [id]);
 
   const getLocalized = (field: string) => {

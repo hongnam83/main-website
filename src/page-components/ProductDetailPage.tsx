@@ -39,6 +39,18 @@ export default function ProductDetailPage({ params }: { params?: { id?: string }
     };
     fetchProduct();
     window.scrollTo(0, 0);
+
+    const handleUpdate = () => {
+      fetchProduct();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('localDB_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('localDB_updated', handleUpdate);
+      }
+    };
   }, [id]);
 
   const hasVariants = product?.variants && product.variants.length > 0;

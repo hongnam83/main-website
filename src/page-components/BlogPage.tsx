@@ -26,6 +26,18 @@ export default function BlogPage() {
       }
     };
     fetchPosts();
+
+    const handleUpdate = () => {
+      fetchPosts();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('localDB_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('localDB_updated', handleUpdate);
+      }
+    };
   }, []);
 
   const loadMore = () => {

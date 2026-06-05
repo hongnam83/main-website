@@ -52,7 +52,7 @@ const seedData: any = {
 export const getDocs = async (collectionRef: any) => {
   await delay(300);
   try {
-    const res = await fetch(`/api/db/${collectionRef.path}`);
+    const res = await fetch(`/api/db/${collectionRef.path}`, { cache: 'no-store' });
     let data: any[] = [];
     if (res.ok) {
         data = await res.json();
@@ -82,7 +82,7 @@ export const getDocs = async (collectionRef: any) => {
 export const getDoc = async (docRef: any) => {
   await delay(300);
   try {
-      const res = await fetch(`/api/db/${docRef.path}/${docRef.id}`);
+      const res = await fetch(`/api/db/${docRef.path}/${docRef.id}`, { cache: 'no-store' });
       if (!res.ok) {
           // If not found, try to look up in seedData
           if (seedData[docRef.path]) {
@@ -117,6 +117,9 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
       });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('localDB_updated'));
+      }
   } catch (e) {
       console.error(e);
   }
@@ -126,6 +129,9 @@ export const deleteDoc = async (docRef: any) => {
   await delay(300);
   try {
       await fetch(`/api/db/${docRef.path}/${docRef.id}`, { method: 'DELETE' });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('localDB_updated'));
+      }
   } catch (e) {
       console.error(e);
   }
@@ -193,6 +199,9 @@ export const writeBatch = (db: any) => {
       await delay(300);
       for (const op of operations) {
         await op();
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('localDB_updated'));
       }
     }
   };

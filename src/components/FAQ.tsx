@@ -23,6 +23,18 @@ export default function FAQ() {
       }
     };
     fetchFaqs();
+
+    const handleUpdate = () => {
+      fetchFaqs();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('localDB_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('localDB_updated', handleUpdate);
+      }
+    };
   }, []);
 
   const displayFaqs = faqs.length > 0 ? faqs : [
