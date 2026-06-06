@@ -1,46 +1,69 @@
 'use client';
 import { motion, AnimatePresence } from 'motion/react';
-import { Star, Quote, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Quote, ArrowRight, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { categories } from '../data/products';
-
-const allProducts = categories.flatMap(c => c.products);
-
-const defaultContents = [
-  "Trước kia mình rất sợ ám vàng mắc cài, đánh răng thì hay chảy máu nướu. Từ khi chuyển sang dùng sản phẩm này của FURANO, nướu khỏe hẳn, đánh răng thơm lâu dã man. Một trải nghiệm hoàn toàn khác biệt so với các sản phẩm trước đây.",
-  "Sản phẩm này của FURANO thực sự là 'chân ái'. Đi làm chỉ cần thao tác tóm gọn là đã sạch bong, trong veo không mùi hôi. Highly recommend cho các bạn xài niềng nhẹ nhõm hẳn đi vài phần.",
-  "Cháu nhà tôi tuổi dậy thì lại lười vệ sinh mắc cài, nha sĩ cứ dọa sâu răng hoài. Mua sản phẩm này về, cháu thích nên tự giác luôn khỏi phải nhắc. Tốn kém xíu nhưng yên tâm.",
-  "Dùng rất thích, lông bàn chải hay đầu vòi đều thiết kế cực kì êm ái cho người niềng. Không lo bị xước nướu hay tồn đọng thức ăn nữa.",
-  "Mình khá nhạy cảm với mùi vị nhưng dòng sản phẩm này hương vị siêu dễ chịu. Cảm giác dùng xong khoang miệng thư giãn hẳn. Bạn nào đang niềng nên thử nhé."
-];
-
-const defaultImages = [
-  "https://images.unsplash.com/photo-1598256989454-99bbedc56b71?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800"
-];
-
-const testimonials = allProducts.map((product, index) => ({
-  content: defaultContents[index % defaultContents.length],
-  image: defaultImages[index % defaultImages.length],
-  productId: product?.id,
-  productName: product?.name
-}));
+import { db, collection, getDocs } from '../localDB';
 
 export default function Testimonials() {
   const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'testimonials'));
+        const items: any[] = [];
+        if (querySnapshot.docs) {
+          querySnapshot.docs.forEach((doc: any) => {
+            items.push({ id: doc.id, ...doc.data() });
+          });
+        }
+        
+        // Sort by order/createdAt
+        items.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        
+        if (items.length > 0) {
+          setTestimonials(items);
+        } else {
+           setTestimonials([]);
+        }
+      } catch (err) {
+        console.error('Error fetching testimonials:', err);
+      }
+      setLoading(false);
+    };
+
+    fetchTestimonials();
+
+    const handleUpdate = () => {
+      fetchTestimonials();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('localDB_updated', handleUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('localDB_updated', handleUpdate);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (testimonials.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % testimonials.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [testimonials]);
+
+  if (loading || testimonials.length === 0) {
+    return null; // or a loading skeleton
+  }
 
   return (
     <>
@@ -86,10 +109,17 @@ export default function Testimonials() {
               >
                 <Quote className="absolute top-6 right-6 w-12 h-12 text-white/5" strokeWidth={1} />
                 
-                <div className="flex items-center gap-1 mb-4 text-amber-400">
-                  {[...Array(5)].map((_, index) => (
-                    <Star key={index} className="w-5 h-5 fill-current" />
-                  ))}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-1 text-amber-400">
+                    {[...Array(5)].map((_, index) => (
+                      <Star key={index} className="w-5 h-5 fill-current" />
+                    ))}
+                  </div>
+                  {(testimonials[currentIndex].name || testimonials[currentIndex].customerName) && (
+                     <div className="text-white/80 font-medium italic border-b border-white/20 pb-0.5">
+                       {testimonials[currentIndex].name || testimonials[currentIndex].customerName}
+                     </div>
+                  )}
                 </div>
                 
                 <p className="text-brand-50 text-lg md:text-xl leading-relaxed italic relative z-10 flex-grow">
@@ -125,11 +155,11 @@ export default function Testimonials() {
                   </div>
 
                   <Link
-                    href={`/product/${testimonials[currentIndex].productId}`}
+                    href={testimonials[currentIndex].productId ? `/product/${testimonials[currentIndex].productId}` : `/products`}
                     className="group inline-flex items-center gap-2 text-brand-300 hover:text-brand-100 transition-colors font-medium text-base md:text-lg flex-1 md:justify-end"
                   >
                     <span className="line-clamp-2 text-left md:text-right">
-                      {t('Xem thêm về')} <span className="font-bold underline underline-offset-4">{testimonials[currentIndex].productName}</span>
+                      {t('Xem thêm về')} <span className="font-bold underline underline-offset-4">{testimonials[currentIndex].productName || testimonials[currentIndex].product || 'Sản phẩm FURANO'}</span>
                     </span>
                     <ArrowRight className="w-5 h-5 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
                   </Link>

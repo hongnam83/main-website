@@ -112,11 +112,14 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
       if (options && options.merge) {
          url += '?merge=true';
       }
-      await fetch(url, {
+      const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
       });
+      if (!res.ok) {
+         throw new Error(`Failed to setDoc: ${res.statusText}`);
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('localDB_updated'));
       }

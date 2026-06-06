@@ -5,6 +5,7 @@ import { db, auth, collection, getDocs, doc, setDoc, deleteDoc, signInWithEmailA
 import { categories as defaultCategories } from '../data/products';
 import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
 import AdminUsersManager from '../components/AdminUsersManager';
+import AdminTestimonialsManager from '../components/AdminTestimonialsManager';
 import SiteSettingsManager from '../components/SiteSettingsManager';
 import Link from 'next/link';
 import { compressImage } from '../lib/imageUtils';
@@ -52,7 +53,7 @@ const AdminLayout = ({ children, activeTab, setActiveTab, user, onLogout }: any)
             <h2 className="text-2xl font-bold text-brand-400">Furano Admin</h2>
           </div>
           <nav className="mt-4">
-            {['Dashboard', 'Site Settings', 'Categories & Products', 'Blog Posts', 'FAQs', 'Admin Users'].map((tab) => (
+            {['Dashboard', 'Site Settings', 'Categories & Products', 'Testimonials', 'Blog Posts', 'FAQs', 'Admin Users'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -61,6 +62,7 @@ const AdminLayout = ({ children, activeTab, setActiveTab, user, onLogout }: any)
                 {tab === 'Dashboard' && 'Bảng Điều khiển'}
                 {tab === 'Site Settings' && 'Cài đặt Giao diện & Ảnh'}
                 {tab === 'Categories & Products' && 'Danh mục & Sản phẩm'}
+                {tab === 'Testimonials' && 'Lời tâm sự'}
                 {tab === 'Blog Posts' && 'Bài viết Blog'}
                 {tab === 'FAQs' && 'Hỏi Đáp (FAQs)'}
                 {tab === 'Admin Users' && 'Thành viên Quản trị'}
@@ -938,6 +940,10 @@ export default function AdminPage() {
       
       <TabPanel active={activeTab === 'Site Settings'}>
         <SiteSettingsManager />
+      </TabPanel>
+
+      <TabPanel active={activeTab === 'Testimonials'}>
+        <AdminTestimonialsManager />
       </TabPanel>
     </AdminLayout>
   );
