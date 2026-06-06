@@ -58,8 +58,8 @@ const AdminLayout = ({ children, activeTab, setActiveTab, user, onLogout }: any)
                 onClick={() => setActiveTab(tab)}
                 className={`w-full text-left px-6 py-3 hover:bg-gray-800 transition-colors ${activeTab === tab ? 'bg-gray-800 border-l-4 border-brand-500' : ''}`}
               >
-                {tab === 'Dashboard' && 'Dashboard'}
-                {tab === 'Site Settings' && 'Hình ảnh chung'}
+                {tab === 'Dashboard' && 'Bảng Điều khiển'}
+                {tab === 'Site Settings' && 'Cài đặt Giao diện & Ảnh'}
                 {tab === 'Categories & Products' && 'Danh mục & Sản phẩm'}
                 {tab === 'Blog Posts' && 'Bài viết Blog'}
                 {tab === 'FAQs' && 'Hỏi Đáp (FAQs)'}
