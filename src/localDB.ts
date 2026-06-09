@@ -7,6 +7,12 @@ export const auth = {
   currentUser: null as User | null,
 };
 
+import { supabase } from './lib/supabase';
+import { categories } from './data/products';
+import { blogPosts } from './data/blogPosts';
+import { faqs } from './data/faqs';
+import { testimonials as sheetTestimonials } from './data/testimonials';
+
 export const db = {};
 
 export const collection = (db: any, path: string) => {
@@ -18,15 +24,12 @@ export const doc = (...args: any[]) => {
   let id = '';
   
   if (args.length === 2 && typeof args[0] === 'object' && args[0].path) {
-    // doc(collectionRef, id)
     path = args[0].path;
     id = args[1] || Math.random().toString(36).substring(7);
   } else if (args.length >= 2 && typeof args[1] === 'string') {
-    // doc(db, path, id?)
     path = args[1];
     id = args[2] || Math.random().toString(36).substring(7);
   } else if (args.length === 1 && typeof args[0] === 'object') {
-     // doc(collectionRef) just generate random id
      path = args[0].path;
      id = Math.random().toString(36).substring(7);
   }
@@ -36,35 +39,28 @@ export const doc = (...args: any[]) => {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-import { categories } from './data/products';
-import { blogPosts } from './data/blogPosts';
-import { faqs } from './data/faqs';
-import { testimonials as sheetTestimonials } from './data/testimonials';
-
 const seedData: any = {
   products: categories,
   blogPosts: blogPosts,
   faqs: faqs,
   testimonials: sheetTestimonials,
-  admins: [{ id: '1', email: 'sonnt.credit@gmail.com' }]
 };
 
 export const getDocs = async (collectionRef: any) => {
-  await delay(300);
   try {
-    const res = await fetch(`/api/db/${collectionRef.path}`, { cache: 'no-store' });
-    let data: any[] = [];
-    if (res.ok) {
-        data = await res.json();
+    const { data: errorData, error } = await supabase
+      .from(collectionRef.path)
+      .select('*');
+      
+    let data = errorData || [];
+    
+    if (error) {
+       console.error("Supabase Error fetch:", error);
     }
     
-    // Fallback to seed data if API returns empty and we have seed data
     if (data.length === 0 && seedData[collectionRef.path]) {
       data = seedData[collectionRef.path];
-      // Init API with seed data
-      for (const item of data) {
-         await setDoc(doc({ path: collectionRef.path }, item.id), item);
-      }
+      // Do not try to auto-init seed data via upsert here, as tables might not exist yet
     }
     
     return {
@@ -80,25 +76,26 @@ export const getDocs = async (collectionRef: any) => {
 };
 
 export const getDoc = async (docRef: any) => {
-  await delay(300);
   try {
-      const res = await fetch(`/api/db/${docRef.path}/${docRef.id}`, { cache: 'no-store' });
-      if (!res.ok) {
-          // If not found, try to look up in seedData
+      const { data, error } = await supabase
+         .from(docRef.path)
+         .select('*')
+         .eq('id', docRef.id)
+         .single();
+         
+      if (error || !data) {
           if (seedData[docRef.path]) {
              const item = seedData[docRef.path].find((i: any) => i.id === docRef.id);
              if (item) {
-                 await setDoc(docRef, item);
                  return { id: docRef.id, exists: () => true, data: () => item };
              }
           }
           return { id: docRef.id, exists: () => false, data: () => null };
       }
-      const item = await res.json();
       return {
         id: docRef.id,
-        exists: () => !!item,
-        data: () => item
+        exists: () => !!data,
+        data: () => data
       };
   } catch (e) {
       return { id: docRef.id, exists: () => false, data: () => null };
@@ -106,20 +103,17 @@ export const getDoc = async (docRef: any) => {
 };
 
 export const setDoc = async (docRef: any, data: any, options?: any) => {
-  await delay(300);
   try {
-      let url = `/api/db/${docRef.path}/${docRef.id}`;
-      if (options && options.merge) {
-         url += '?merge=true';
+      const payload = { ...data, id: docRef.id };
+      
+      const { error } = await supabase
+        .from(docRef.path)
+        .upsert(payload);
+        
+      if (error) {
+         throw new Error(`Failed to setDoc in Supabase: ${error.message}`);
       }
-      const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-      });
-      if (!res.ok) {
-         throw new Error(`Failed to setDoc: ${res.statusText}`);
-      }
+      
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('localDB_updated'));
       }
@@ -129,9 +123,16 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
 };
 
 export const deleteDoc = async (docRef: any) => {
-  await delay(300);
   try {
-      await fetch(`/api/db/${docRef.path}/${docRef.id}`, { method: 'DELETE' });
+      const { error } = await supabase
+        .from(docRef.path)
+        .delete()
+        .eq('id', docRef.id);
+        
+      if (error) {
+        throw new Error(`Failed to deleteDoc in Supabase: ${error.message}`);
+      }
+      
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('localDB_updated'));
       }
@@ -199,7 +200,6 @@ export const writeBatch = (db: any) => {
       operations.push(() => deleteDoc(docRef));
     },
     commit: async () => {
-      await delay(300);
       for (const op of operations) {
         await op();
       }

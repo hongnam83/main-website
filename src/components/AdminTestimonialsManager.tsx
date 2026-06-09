@@ -12,7 +12,6 @@ export default function AdminTestimonialsManager() {
   const [loading, setLoading] = useState(true);
 
   const fetchTestimonials = async () => {
-    setLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, 'testimonials'));
       const items: any[] = [];
@@ -27,7 +26,6 @@ export default function AdminTestimonialsManager() {
     } catch (error) {
       console.error("Error fetching testimonials", error);
     }
-    setLoading(false);
   };
 
   const fetchProducts = async () => {
@@ -51,8 +49,13 @@ export default function AdminTestimonialsManager() {
   };
 
   useEffect(() => {
-    fetchTestimonials();
-    fetchProducts();
+    const initData = async () => {
+      setLoading(true);
+      await Promise.all([fetchTestimonials(), fetchProducts()]);
+      setLoading(false);
+    };
+    initData();
+    
     const handleUpdate = () => {
       fetchTestimonials();
       fetchProducts();

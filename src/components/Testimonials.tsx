@@ -126,16 +126,16 @@ export default function Testimonials() {
                   &quot;{t(testimonials[currentIndex].content)}&quot;
                 </p>
 
-                <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-                  <div className="flex items-center gap-4 flex-shrink-0">
+                <div className="mt-6 flex flex-col xl:flex-row items-center xl:items-center justify-between gap-6 relative z-10">
+                  <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center w-full xl:w-auto">
                     <button 
                       onClick={() => setCurrentIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
-                      className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                      className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shrink-0"
                       aria-label="Xem nhận xét trước"
                     >
                       <ChevronLeft className="w-5 h-5 text-white" />
                     </button>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                       {testimonials.map((_, i) => (
                         <button 
                           key={i} 
@@ -147,7 +147,7 @@ export default function Testimonials() {
                     </div>
                     <button 
                       onClick={() => setCurrentIndex((prev) => (prev + 1) % testimonials.length)}
-                      className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                      className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shrink-0"
                       aria-label="Xem nhận xét tiếp theo"
                     >
                       <ChevronRight className="w-5 h-5 text-white" />
@@ -156,9 +156,9 @@ export default function Testimonials() {
 
                   <Link
                     href={testimonials[currentIndex].productId ? `/product/${testimonials[currentIndex].productId}` : `/products`}
-                    className="group inline-flex items-center gap-2 text-brand-300 hover:text-brand-100 transition-colors font-medium text-base md:text-lg flex-1 md:justify-end"
+                    className="group flex flex-row items-center gap-2 text-brand-300 hover:text-brand-100 transition-colors font-medium text-base md:text-lg w-full xl:w-auto justify-center xl:justify-end text-center xl:text-right"
                   >
-                    <span className="line-clamp-2 text-left md:text-right">
+                    <span>
                       {t('Xem thêm về')} <span className="font-bold underline underline-offset-4">{testimonials[currentIndex].productName || testimonials[currentIndex].product || 'Sản phẩm FURANO'}</span>
                     </span>
                     <ArrowRight className="w-5 h-5 flex-shrink-0 group-hover:translate-x-1 transition-transform" />

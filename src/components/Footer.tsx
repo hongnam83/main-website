@@ -3,8 +3,7 @@ import { Facebook, Instagram, Phone, Mail, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import FuranoLogo from './FuranoLogo';
-import { useState, useEffect } from 'react';
-import { db, doc, getDoc } from '../localDB';
+import { useSiteSettings } from '../contexts/SiteSettingsContext';
 
 const TiktokIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -14,19 +13,7 @@ const TiktokIcon = ({ className }: { className?: string }) => (
 
 export default function Footer() {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<any>({});
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const snap = await getDoc(doc(db, 'settings', 'general'));
-        if (snap.exists()) {
-          setSettings(snap.data());
-        }
-      } catch (err) {}
-    };
-    fetchSettings();
-  }, []);
+  const settings = useSiteSettings();
 
   return (
     <footer className="bg-brand-50 text-gray-600 pt-20 pb-10 border-t border-brand-200">

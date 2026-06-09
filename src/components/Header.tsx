@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Menu, X, ChevronDown, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -113,10 +114,13 @@ export default function Header() {
               onBlur={() => setTimeout(() => setLangDropdownOpen(false), 200)}
               className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-700 bg-white/50 hover:bg-white rounded-full transition-colors shadow-sm"
             >
-              <img
+              <Image
                 src={currentLang === 'VN' ? "https://flagcdn.com/w20/vn.png" : "https://flagcdn.com/w20/gb.png"}
                 alt={currentLang}
                 className="w-5 h-auto rounded-sm"
+                width={20}
+                height={15}
+                referrerPolicy="no-referrer"
               />
               <span className="hidden md:inline">{currentLang}</span>
               <ChevronDown className={`w-4 h-4 transition-transform ${langDropdownOpen ? 'rotate-180' : ''}`} />
@@ -128,14 +132,14 @@ export default function Header() {
                   className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-gray-50 transition-colors ${currentLang === 'VN' ? 'font-bold text-brand-800 bg-brand-50/50' : 'text-gray-700'}`}
                   onClick={() => { setCurrentLang('VN'); i18n.changeLanguage('vi'); setLangDropdownOpen(false); }}
                 >
-                  <img src="https://flagcdn.com/w20/vn.png" alt="VN" className="w-5 h-auto rounded-sm" />
+                  <Image src="https://flagcdn.com/w20/vn.png" alt="VN" className="w-5 h-auto rounded-sm" width={20} height={15} referrerPolicy="no-referrer" />
                   Tiếng Việt
                 </button>
                 <button
                   className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-gray-50 transition-colors ${currentLang === 'EN' ? 'font-bold text-brand-800 bg-brand-50/50' : 'text-gray-700'}`}
                   onClick={() => { setCurrentLang('EN'); i18n.changeLanguage('en'); setLangDropdownOpen(false); }}
                 >
-                  <img src="https://flagcdn.com/w20/gb.png" alt="EN" className="w-5 h-auto rounded-sm" />
+                  <Image src="https://flagcdn.com/w20/gb.png" alt="EN" className="w-5 h-auto rounded-sm" width={20} height={15} referrerPolicy="no-referrer" />
                   English
                 </button>
               </div>
