@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Pencil, Trash2, Plus, Image as ImageIcon, X, Database, ArrowUp, ArrowDown } from 'lucide-react';
 import { db, auth, collection, getDocs, doc, setDoc, deleteDoc, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, onAuthStateChanged, User, writeBatch } from '../localDB';
 import { categories as defaultCategories } from '../data/products';
@@ -859,22 +860,6 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   );
 };
 
-const TabPanel = ({ active, children }: any) => {
-  const [visited, setVisited] = useState(active);
-  
-  if (active && !visited) {
-    setVisited(true);
-  }
-
-  if (!visited) return null;
-
-  return (
-    <div className={active ? "block" : "hidden"}>
-      {children}
-    </div>
-  );
-};
-
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [user, setUser] = useState<User | null>(null);
@@ -916,46 +901,40 @@ export default function AdminPage() {
 
   return (
     <AdminLayout activeTab={activeTab} setActiveTab={setActiveTab} user={user} onLogout={handleLogout}>
-      <TabPanel active={activeTab === 'Dashboard'}>
-        <DashboardView />
-      </TabPanel>
-      
-      <TabPanel active={activeTab === 'Categories & Products'}>
-        <CategoriesProductsManager />
-      </TabPanel>
-      
-      <TabPanel active={activeTab === 'Blog Posts'}>
-        <GenericCollectionManager title="Bài viết Blog" collectionName="blogPosts" fields={[
-          { name: 'title', label: 'Tiêu đề', type: 'text' },
-          { name: 'title_en', label: 'Tiêu đề (EN)', type: 'text' },
-          { name: 'category', label: 'Chuyên mục', type: 'text' },
-          { name: 'date', label: 'Ngày tháng (VD: 24 Thg 05, 2024)', type: 'text' },
-          { name: 'image', label: 'Ảnh đại diện', type: 'image' },
-          { name: 'excerpt', label: 'Mô tả ngắn', type: 'textarea' },
-          { name: 'excerpt_en', label: 'Mô tả ngắn (EN)', type: 'textarea' },
-          { name: 'content', label: 'Nội dung (Hỗ trợ Markdown)', type: 'textarea' },
-          { name: 'content_en', label: 'Nội dung (EN)', type: 'textarea' }
-        ]} />
-      </TabPanel>
-      
-      <TabPanel active={activeTab === 'FAQs'}>
-        <GenericCollectionManager title="Câu Hỏi Thường Gặp" collectionName="faqs" allowReorder={true} fields={[
-          { name: 'question', label: 'Câu hỏi', type: 'text' },
-          { name: 'answer', label: 'Câu trả lời', type: 'textarea' }
-        ]} />
-      </TabPanel>
-
-      <TabPanel active={activeTab === 'Admin Users'}>
-        <AdminUsersManager />
-      </TabPanel>
-      
-      <TabPanel active={activeTab === 'Site Settings'}>
-        <SiteSettingsManager />
-      </TabPanel>
-
-      <TabPanel active={activeTab === 'Testimonials'}>
-        <AdminTestimonialsManager />
-      </TabPanel>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === 'Dashboard' && <DashboardView />}
+          {activeTab === 'Categories & Products' && <CategoriesProductsManager />}
+          {activeTab === 'Blog Posts' && (
+            <GenericCollectionManager title="Bài viết Blog" collectionName="blogPosts" fields={[
+              { name: 'title', label: 'Tiêu đề', type: 'text' },
+              { name: 'title_en', label: 'Tiêu đề (EN)', type: 'text' },
+              { name: 'category', label: 'Chuyên mục', type: 'text' },
+              { name: 'date', label: 'Ngày tháng (VD: 24 Thg 05, 2024)', type: 'text' },
+              { name: 'image', label: 'Ảnh đại diện', type: 'image' },
+              { name: 'excerpt', label: 'Mô tả ngắn', type: 'textarea' },
+              { name: 'excerpt_en', label: 'Mô tả ngắn (EN)', type: 'textarea' },
+              { name: 'content', label: 'Nội dung (Hỗ trợ Markdown)', type: 'textarea' },
+              { name: 'content_en', label: 'Nội dung (EN)', type: 'textarea' }
+            ]} />
+          )}
+          {activeTab === 'FAQs' && (
+            <GenericCollectionManager title="Câu Hỏi Thường Gặp" collectionName="faqs" allowReorder={true} fields={[
+              { name: 'question', label: 'Câu hỏi', type: 'text' },
+              { name: 'answer', label: 'Câu trả lời', type: 'textarea' }
+            ]} />
+          )}
+          {activeTab === 'Admin Users' && <AdminUsersManager />}
+          {activeTab === 'Site Settings' && <SiteSettingsManager />}
+          {activeTab === 'Testimonials' && <AdminTestimonialsManager />}
+        </motion.div>
+      </AnimatePresence>
     </AdminLayout>
   );
 }
