@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Pencil, Trash2, Plus, Image as ImageIcon, X, Database } from 'lucide-react';
+import { Pencil, Trash2, Plus, Image as ImageIcon, X, Database, ArrowUp, ArrowDown } from 'lucide-react';
 import { db, auth, collection, getDocs, doc, setDoc, deleteDoc, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, onAuthStateChanged, User, writeBatch } from '../localDB';
 import { categories as defaultCategories } from '../data/products';
 import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
@@ -348,7 +348,7 @@ const ItemModal = ({ item, fields, onSave, onClose, isProduct = false }: any) =>
   );
 };
 
-const GenericCollectionManager = ({ title, collectionName, fields }: any) => {
+const GenericCollectionManager = ({ title, collectionName, fields, allowReorder }: any) => {
   const [items, setItems] = useState<any[]>([]);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -368,6 +368,15 @@ const GenericCollectionManager = ({ title, collectionName, fields }: any) => {
       if (data.length === 0) {
           if (collectionName === 'blogPosts') data = defaultBlogPosts;
           // You could add other collection fallbacks here if needed
+      }
+
+      if (allowReorder) {
+        data.sort((a, b) => {
+          const orderA = typeof a.order === 'number' ? a.order : 999;
+          const orderB = typeof b.order === 'number' ? b.order : 999;
+          if (orderA === orderB) return a.id.localeCompare(b.id);
+          return orderA - orderB;
+        });
       }
       
       setItems(data);
@@ -401,6 +410,33 @@ const GenericCollectionManager = ({ title, collectionName, fields }: any) => {
       fetchItems();
     } catch(e) {
       // console.error(e);
+    }
+  };
+
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= items.length) return;
+    
+    // Optimistically update
+    const newItems = [...items];
+    const temp = newItems[index];
+    newItems[index] = newItems[swapIndex];
+    newItems[swapIndex] = temp;
+    
+    // Assign definitive order to both
+    const updatedItems = newItems.map((item, idx) => ({ ...item, order: idx }));
+    setItems(updatedItems);
+
+    try {
+       // We'll update order field for all items in this collection
+       // It's safe since this is usually used for small collections like faqs/testimonials
+       const updatePromises = updatedItems.map(item => 
+          setDoc(doc(db, collectionName, item.id), { order: item.order }, { merge: true })
+       );
+       await Promise.all(updatePromises);
+    } catch (e) {
+       console.error(e);
+       fetchItems(); // revert on failure
     }
   };
 
@@ -467,11 +503,12 @@ const GenericCollectionManager = ({ title, collectionName, fields }: any) => {
               <tr className="border-b bg-gray-50">
                 <th className="py-3 px-4 rounded-tl-lg">Hình ảnh</th>
                 <th className="py-3 px-4">Tiêu đề / Tên</th>
+                {allowReorder && <th className="py-3 px-4 w-24 text-center">Vị trí</th>}
                 <th className="py-3 px-4 w-32 text-right rounded-tr-lg">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item: any) => (
+              {items.map((item: any, idx: number) => (
                 <tr key={item.id} className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4">
                     {item.image || item.heroImage ? (
@@ -483,6 +520,26 @@ const GenericCollectionManager = ({ title, collectionName, fields }: any) => {
                     )}
                   </td>
                   <td className="py-3 px-4 font-medium max-w-xs line-clamp-2">{item.title || item.name || item.question}</td>
+                  {allowReorder && (
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button 
+                          onClick={() => handleMove(idx, 'up')} 
+                          disabled={idx === 0}
+                          className="p-1 text-gray-500 hover:text-black hover:bg-gray-200 rounded disabled:opacity-30"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleMove(idx, 'down')} 
+                          disabled={idx === items.length - 1}
+                          className="p-1 text-gray-500 hover:text-black hover:bg-gray-200 rounded disabled:opacity-30"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                   <td className="py-3 px-4 text-right">
                     <button onClick={() => setEditingItem(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><Pencil className="w-4 h-4" /></button>
                     <button onClick={() => handleDelete(item.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
@@ -805,9 +862,9 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
 const TabPanel = ({ active, children }: any) => {
   const [visited, setVisited] = useState(active);
   
-  useEffect(() => {
-    if (active) setVisited(true);
-  }, [active]);
+  if (active && !visited) {
+    setVisited(true);
+  }
 
   if (!visited) return null;
 
@@ -882,7 +939,7 @@ export default function AdminPage() {
       </TabPanel>
       
       <TabPanel active={activeTab === 'FAQs'}>
-        <GenericCollectionManager title="Câu Hỏi Thường Gặp" collectionName="faqs" fields={[
+        <GenericCollectionManager title="Câu Hỏi Thường Gặp" collectionName="faqs" allowReorder={true} fields={[
           { name: 'question', label: 'Câu hỏi', type: 'text' },
           { name: 'answer', label: 'Câu trả lời', type: 'textarea' }
         ]} />

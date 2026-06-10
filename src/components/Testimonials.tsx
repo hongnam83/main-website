@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { db, collection, getDocs } from '../localDB';
+import { testimonials as defaultTestimonials } from '../data/testimonials';
 
 export default function Testimonials() {
   const { t } = useTranslation();
@@ -29,10 +30,11 @@ export default function Testimonials() {
         if (items.length > 0) {
           setTestimonials(items);
         } else {
-           setTestimonials([]);
+           setTestimonials(defaultTestimonials);
         }
       } catch (err) {
         console.error('Error fetching testimonials:', err);
+        setTestimonials(defaultTestimonials);
       }
       setLoading(false);
     };

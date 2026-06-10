@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { db, doc, getDoc, setDoc } from '../localDB';
 import { compressImage } from '../lib/imageUtils';
+import { supabase } from '../lib/supabase';
 import { Map, Image as ImageIcon, Home, Settings as SettingsIcon, LayoutTemplate, Layers } from 'lucide-react';
 
 export default function SiteSettingsManager() {
@@ -48,8 +49,6 @@ export default function SiteSettingsManager() {
     if (file) {
       try {
         setSaving(true);
-        // We will try to upload to Supabase storage directly for reliable persistence
-        const { supabase } = await import('../lib/supabase');
         
         // Tạo unique name
         const fileExt = file.name.split('.').pop();

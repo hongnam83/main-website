@@ -15,6 +15,14 @@ export default function FAQ() {
       try {
         const snapshot = await getDocs(collection(db, 'faqs'));
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        data.sort((a, b) => {
+          const orderA = typeof a.order === 'number' ? a.order : 999;
+          const orderB = typeof b.order === 'number' ? b.order : 999;
+          if (orderA === orderB) return a.id.localeCompare(b.id);
+          return orderA - orderB;
+        });
+
         if (data.length > 0) {
           setFaqs(data);
         }
