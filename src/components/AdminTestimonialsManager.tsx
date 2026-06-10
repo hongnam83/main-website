@@ -91,6 +91,7 @@ export default function AdminTestimonialsManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      await new Promise(resolve => setTimeout(resolve, 1200)); // Delay for UI state
       await setDoc(doc(db, 'testimonials', formData.id), formData);
       setEditingId(null);
       fetchTestimonials();
@@ -226,8 +227,9 @@ export default function AdminTestimonialsManager() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition"
+                className="flex items-center gap-2 px-6 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
               >
+                {saving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>}
                 {saving ? 'Đang lưu...' : <><Check className="w-4 h-4" /> Lưu lại</>}
               </button>
             </div>

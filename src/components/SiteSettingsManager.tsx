@@ -34,6 +34,7 @@ export default function SiteSettingsManager() {
   const handleSave = async () => {
     try {
       setSaving(true);
+      await new Promise(resolve => setTimeout(resolve, 1200)); // Delay for UI state
       await setDoc(doc(db, 'settings', 'general'), settings, { merge: true });
       alert("Đã lưu cài đặt chung!");
     } catch (e) {
@@ -167,8 +168,9 @@ export default function SiteSettingsManager() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-6 py-2 bg-brand-600 text-white font-medium rounded-lg hover:bg-brand-700 transition shadow-sm"
+            className="px-6 py-2 bg-brand-600 text-white font-medium rounded-lg hover:bg-brand-700 transition shadow-sm flex items-center gap-2 disabled:opacity-50"
           >
+            {saving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>}
             {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
           </button>
         </div>
