@@ -98,62 +98,10 @@ const AdminLayout = ({ children, activeTab, setActiveTab, user, onLogout }: any)
 };
 
 const DashboardView = () => {
-  const [isSeeding, setIsSeeding] = useState(false);
-
-  const handleSeed = async () => {
-    if (!confirm('Khởi tạo lại cơ sở dữ liệu mẫu? (Chỉ thêm nếu thiếu)')) return;
-    setIsSeeding(true);
-    try {
-      // Products (categories)
-      const batch1 = writeBatch(db);
-      for (const cat of defaultCategories) {
-        batch1.set(doc(db, 'products', cat.id), cat, { merge: true });
-      }
-      await batch1.commit();
-
-      // Blogs
-      const batch2 = writeBatch(db);
-      for (const post of defaultBlogPosts) {
-        batch2.set(doc(db, 'blogPosts', post.id), post, { merge: true });
-      }
-      await batch2.commit();
-
-      // FAQs
-      const batch3 = writeBatch(db);
-      const defaultFaqs = [
-        { id: "1", question: "Sản phẩm FURANO có dùng được cho răng nhạy cảm không?", answer: "Hoàn toàn được. Công thức không chứa chất mài mòn mạnh (low RDA)." },
-        { id: "2", question: "Bao nhiêu lâu thì nên thay đổi bàn chải kẽ?", answer: "Với người đang niềng răng, nha sĩ khuyên nên làm vệ sinh bàn chải sau mỗi lần sử dụng..." },
-      ];
-      for (const f of defaultFaqs) {
-        batch3.set(doc(db, 'faqs', f.id), f, { merge: true });
-      }
-      await batch3.commit();
-      
-      alert('Đã khởi tạo xong cơ sở dữ liệu mẫu!');
-    } catch(e) {
-      // console.error(e);
-      alert('Lỗi khởi tạo!');
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Dashboard</h2>
+      <h2 className="text-2xl font-bold mb-4">Bảng Điều khiển</h2>
       <p className="mb-6">Chào mừng đến với trang quản trị Furano. Vui lòng chọn danh mục bên trái.</p>
-      
-      <div className="p-6 bg-blue-50 border border-blue-100 rounded-xl max-w-lg">
-         <h3 className="text-blue-900 font-bold mb-2 flex items-center gap-2">
-            <Database className="w-5 h-5"/> Khởi tạo dữ liệu
-         </h3>
-         <p className="text-blue-800 text-sm mb-4">
-           Nhấn nút dưới đây để mồi (seed) dữ liệu tĩnh ban đầu vào cơ sở dữ liệu Firebase. Giúp bạn dễ dàng chỉnh sửa mà không cần nhập lại từ đầu.
-         </p>
-         <button onClick={handleSeed} disabled={isSeeding} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-           {isSeeding ? 'Đang chạy...' : 'Khởi tạo Dữ liệu Mẫu'}
-         </button>
-      </div>
     </div>
   );
 };
@@ -855,10 +803,16 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
 };
 
 const TabPanel = ({ active, children }: any) => {
-  if (!active) return null;
+  const [visited, setVisited] = useState(active);
+  
+  useEffect(() => {
+    if (active) setVisited(true);
+  }, [active]);
+
+  if (!visited) return null;
 
   return (
-    <div className="block">
+    <div className={active ? "block" : "hidden"}>
       {children}
     </div>
   );

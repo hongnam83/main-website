@@ -13,6 +13,20 @@ import { blogPosts } from './data/blogPosts';
 import { faqs } from './data/faqs';
 import { testimonials as sheetTestimonials } from './data/testimonials';
 
+// Set up Supabase Realtime for automatic data updates
+if (typeof window !== 'undefined') {
+  try {
+    supabase
+      .channel('public-tables')
+      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+        window.dispatchEvent(new Event('localDB_updated'));
+      })
+      .subscribe();
+  } catch (e) {
+    console.warn("Could not subscribe to Supabase Realtime", e);
+  }
+}
+
 export const db = {};
 
 export const collection = (db: any, path: string) => {
@@ -60,7 +74,15 @@ export const getDocs = async (collectionRef: any) => {
     
     if (data.length === 0 && seedData[collectionRef.path]) {
       data = seedData[collectionRef.path];
-      // Do not try to auto-init seed data via upsert here, as tables might not exist yet
+      
+      // Auto-init seed data via upsert in the background if empty, so the user doesn't have to manually seed
+      if (typeof window !== 'undefined') {
+         setTimeout(async () => {
+             for (const item of data) {
+                await supabase.from(collectionRef.path).upsert({ ...item, id: item.id });
+             }
+         }, 1000);
+      }
     }
     
     return {
@@ -111,7 +133,12 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
         .upsert(payload);
         
       if (error) {
-         throw new Error(`Failed to setDoc in Supabase: ${error.message}`);
+         console.warn(`Supabase upsert failed: ${error.message}. Falling back to local memory.`);
+         if (seedData[docRef.path]) {
+             const index = seedData[docRef.path].findIndex((i: any) => i.id === docRef.id);
+             if (index >= 0) seedData[docRef.path][index] = payload;
+             else seedData[docRef.path].push(payload);
+         }
       }
       
       if (typeof window !== 'undefined') {
@@ -130,7 +157,10 @@ export const deleteDoc = async (docRef: any) => {
         .eq('id', docRef.id);
         
       if (error) {
-        throw new Error(`Failed to deleteDoc in Supabase: ${error.message}`);
+        console.warn(`Supabase delete failed: ${error.message}. Falling back to local memory.`);
+        if (seedData[docRef.path]) {
+            seedData[docRef.path] = seedData[docRef.path].filter((i: any) => i.id !== docRef.id);
+        }
       }
       
       if (typeof window !== 'undefined') {

@@ -47,11 +47,30 @@ export default function SiteSettingsManager() {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // Medium size to prevent payload issues
-        const compressedDataUrl = await compressImage(file, 800, 0.8);
-        handleChange(key, compressedDataUrl);
+        setSaving(true);
+        // We will try to upload to Supabase storage directly for reliable persistence
+        const { supabase } = await import('../lib/supabase');
+        
+        // Tạo unique name
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        const { data, error } = await supabase.storage.from('public_assets').upload(filePath, file);
+        
+        if (error) {
+           console.error("Storage upload error:", error);
+           // Fallback to base64 if storage bucket is not available yet
+           const compressedDataUrl = await compressImage(file, 800, 0.8);
+           handleChange(key, compressedDataUrl);
+        } else {
+           const { data: publicUrlData } = supabase.storage.from('public_assets').getPublicUrl(filePath);
+           handleChange(key, publicUrlData.publicUrl);
+        }
       } catch (err) {
-        console.error('Lỗi khi nén ảnh', err);
+        console.error('Lỗi khi xử lý ảnh', err);
+      } finally {
+        setSaving(false);
       }
     }
   };
