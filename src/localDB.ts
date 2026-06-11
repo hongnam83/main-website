@@ -58,7 +58,12 @@ export const doc = (...args: any[]) => {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const HAS_SUPABASE = !!process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co';
+
 export const getDocs = async (collectionRef: any) => {
+  if (!HAS_SUPABASE) {
+    return { docs: [] };
+  }
   try {
     const { data: errorData, error } = await supabase
       .from(collectionRef.path)
@@ -83,6 +88,9 @@ export const getDocs = async (collectionRef: any) => {
 };
 
 export const getDoc = async (docRef: any) => {
+  if (!HAS_SUPABASE) {
+     return { id: docRef.id, exists: () => false, data: () => null };
+  }
   try {
       const { data, error } = await supabase
          .from(docRef.path)
@@ -104,6 +112,13 @@ export const getDoc = async (docRef: any) => {
 };
 
 export const setDoc = async (docRef: any, data: any, options?: any) => {
+  if (!HAS_SUPABASE) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('localDB_updated'));
+        localStorage.setItem('localDB_updated_event', Date.now().toString());
+      }
+      return;
+  }
   try {
       const payload = { ...data, id: docRef.id };
       
@@ -125,6 +140,13 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
 };
 
 export const deleteDoc = async (docRef: any) => {
+  if (!HAS_SUPABASE) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('localDB_updated'));
+        localStorage.setItem('localDB_updated_event', Date.now().toString());
+      }
+      return;
+  }
   try {
       const { error } = await supabase
         .from(docRef.path)

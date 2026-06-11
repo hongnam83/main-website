@@ -6,4 +6,17 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env
 // Initialize the Supabase client.
 // Note: It will throw an error or fail silently if the URL and Key are empty, 
 // so make sure to provide them in AI Studio's settings menu (or environment variables).
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-key');
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder-key',
+  {
+    global: {
+      fetch: (...args) => {
+        return fetch(args[0], {
+          ...args[1],
+          cache: 'no-store'
+        });
+      }
+    }
+  }
+);
