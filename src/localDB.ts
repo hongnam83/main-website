@@ -8,6 +8,17 @@ export const auth = {
 };
 
 import { supabase } from './lib/supabase';
+import { blogPosts as defaultBlogPosts } from './data/blogPosts';
+import { faqs as defaultFaqs } from './data/faqs';
+import { categories as defaultCategories } from './data/products';
+import { testimonials as defaultTestimonials } from './data/testimonials';
+
+const DEFAULTS_MAP: Record<string, any[]> = {
+  blogPosts: defaultBlogPosts,
+  faqs: defaultFaqs,
+  products: defaultCategories,
+  testimonials: defaultTestimonials,
+};
 
 // Set up cross-tab synchronization for local events
 if (typeof window !== 'undefined') {
@@ -61,54 +72,66 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const HAS_SUPABASE = !!process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co';
 
 export const getDocs = async (collectionRef: any) => {
-  if (!HAS_SUPABASE) {
-    return { docs: [] };
-  }
-  try {
-    const { data: errorData, error } = await supabase
-      .from(collectionRef.path)
-      .select('*');
-      
-    let data = errorData || [];
-    
-    if (error) {
-       console.error("Supabase Error fetch:", error);
-    }
-    
-    return {
-      docs: data.map((item: any) => ({
-        id: item.id,
-        data: () => item
-      }))
-    };
-  } catch (e) {
+  let data: any[] = [];
+  if (HAS_SUPABASE) {
+    try {
+      const { data: errorData, error } = await supabase
+        .from(collectionRef.path)
+        .select('*');
+      data = errorData || [];
+      if (error) console.error("Supabase Error fetch:", error);
+    } catch (e) {
       console.error(e);
-      return { docs: [] };
+    }
   }
+
+  // Merge with defaults
+  const defaults = DEFAULTS_MAP[collectionRef.path] || [];
+  const dbIds = new Set(data.map(d => d.id));
+  const deletedIds = new Set(data.filter(d => d._deleted).map(d => d.id));
+  
+  const mergedData = [
+    ...data.filter(d => !d._deleted),
+    ...defaults.filter(d => !dbIds.has(d.id) && !deletedIds.has(d.id))
+  ];
+
+  return {
+    docs: mergedData.map((item: any) => ({
+      id: item.id,
+      data: () => item
+    }))
+  };
 };
 
 export const getDoc = async (docRef: any) => {
-  if (!HAS_SUPABASE) {
-     return { id: docRef.id, exists: () => false, data: () => null };
+  let data = null;
+  if (HAS_SUPABASE) {
+    try {
+        const { data: resData, error } = await supabase
+           .from(docRef.path)
+           .select('*')
+           .eq('id', docRef.id)
+           .single();
+        if (!error && resData) data = resData;
+    } catch (e) {}
   }
-  try {
-      const { data, error } = await supabase
-         .from(docRef.path)
-         .select('*')
-         .eq('id', docRef.id)
-         .single();
-         
-      if (error || !data) {
-          return { id: docRef.id, exists: () => false, data: () => null };
+
+  // Fallback to defaults
+  if (!data || data._deleted) {
+      const defaults = DEFAULTS_MAP[docRef.path] || [];
+      const defaultItem = defaults.find((d: any) => d.id === docRef.id);
+      if (defaultItem && (!data || !data._deleted)) {
+          data = defaultItem;
+      } else {
+          data = null;
       }
-      return {
-        id: docRef.id,
-        exists: () => !!data,
-        data: () => data
-      };
-  } catch (e) {
-      return { id: docRef.id, exists: () => false, data: () => null };
   }
+
+  return {
+    id: docRef.id,
+    exists: () => !!data,
+    data: () => data
+  };
 };
 
 export const setDoc = async (docRef: any, data: any, options?: any) => {
@@ -150,8 +173,7 @@ export const deleteDoc = async (docRef: any) => {
   try {
       const { error } = await supabase
         .from(docRef.path)
-        .delete()
-        .eq('id', docRef.id);
+        .upsert({ id: docRef.id, _deleted: true });
         
       if (error) {
         console.warn(`Supabase delete failed: ${error.message}.`);

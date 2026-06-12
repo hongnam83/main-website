@@ -6,6 +6,7 @@ import { categories as defaultCategories } from '../data/products';
 import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
 import AdminUsersManager from '../components/AdminUsersManager';
 import AdminTestimonialsManager from '../components/AdminTestimonialsManager';
+import AdminBlogManager from '../components/AdminBlogManager';
 import SiteSettingsManager from '../components/SiteSettingsManager';
 import Link from 'next/link';
 import { compressImage } from '../lib/imageUtils';
@@ -933,17 +934,7 @@ export default function AdminPage() {
       </TabPanel>
       
       <TabPanel active={activeTab === 'Blog Posts'}>
-        <GenericCollectionManager title="Bài viết Blog" collectionName="blogPosts" fields={[
-          { name: 'title', label: 'Tiêu đề', type: 'text' },
-          { name: 'title_en', label: 'Tiêu đề (EN)', type: 'text' },
-          { name: 'category', label: 'Chuyên mục', type: 'text' },
-          { name: 'date', label: 'Ngày tháng (VD: 24 Thg 05, 2024)', type: 'text' },
-          { name: 'image', label: 'Ảnh đại diện', type: 'image' },
-          { name: 'excerpt', label: 'Mô tả ngắn', type: 'textarea' },
-          { name: 'excerpt_en', label: 'Mô tả ngắn (EN)', type: 'textarea' },
-          { name: 'content', label: 'Nội dung (Hỗ trợ Markdown)', type: 'textarea' },
-          { name: 'content_en', label: 'Nội dung (EN)', type: 'textarea' }
-        ]} />
+        <AdminBlogManager />
       </TabPanel>
       
       <TabPanel active={activeTab === 'FAQs'}>

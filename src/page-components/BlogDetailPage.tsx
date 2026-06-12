@@ -8,6 +8,7 @@ import CTASection from '../components/CTASection';
 import { db, doc, getDoc } from '../localDB';
 import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
 import SEO from '../components/SEO';
+import BlogBlockRenderer from '../components/BlogBlockRenderer';
 
 export default function BlogDetailPage({ params }: { params?: { id?: string } }) {
   const id = params?.id;
@@ -144,9 +145,13 @@ export default function BlogDetailPage({ params }: { params?: { id?: string } })
           </div>
 
           <div className="p-8 md:p-12 lg:p-16">
-            <div className="prose prose-lg md:prose-xl prose-brand max-w-none text-gray-700">
-              <ReactMarkdown>{getLocalized('content') || ''}</ReactMarkdown>
-            </div>
+            {post.blocks && post.blocks.length > 0 ? (
+              <BlogBlockRenderer blocks={post.blocks} />
+            ) : (
+              <div className="prose prose-lg md:prose-xl prose-brand max-w-none text-gray-700">
+                <ReactMarkdown>{getLocalized('content') || ''}</ReactMarkdown>
+              </div>
+            )}
 
             <div className="mt-16 pt-8 border-t border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-4">
