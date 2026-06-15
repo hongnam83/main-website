@@ -1,472 +1,594 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Trash2, Plus, Image as ImageIcon, X, ArrowUp, ArrowDown } from 'lucide-react';
-import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../localDB';
+import { collection, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { getDocs, getDoc } from '../localDB';
+import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Check, X, Image as ImageIcon } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
-
-export type BlockType = 'h2' | 'h3' | 'paragraph' | 'bullet_list' | 'numbered_list' | 'table' | 'note' | 'warning' | 'advice' | 'image' | 'image_text' | 'text_image' | 'two_images' | 'gallery';
-
-export interface BlockData {
-  id: string;
-  type: BlockType;
-  content?: string;
-  items?: string[];
-  tableData?: string[][];
-  image?: { url: string; alt?: string; caption?: string };
-  images?: { url: string; alt?: string; caption?: string }[];
-}
-
-const BLOCK_TYPES = [
-  { value: 'h2', label: 'Tiêu đề H2' },
-  { value: 'h3', label: 'Tiêu đề H3' },
-  { value: 'paragraph', label: 'Đoạn văn bản' },
-  { value: 'bullet_list', label: 'Danh sách gạch đầu dòng' },
-  { value: 'numbered_list', label: 'Danh sách đánh số' },
-  { value: 'table', label: 'Bảng' },
-  { value: 'note', label: 'Box lưu ý' },
-  { value: 'warning', label: 'Box cảnh báo' },
-  { value: 'advice', label: 'Box lời khuyên' },
-  { value: 'image', label: 'Ảnh đơn' },
-  { value: 'image_text', label: 'Ảnh trái, chữ phải' },
-  { value: 'text_image', label: 'Chữ trái, ảnh phải' },
-  { value: 'two_images', label: 'Hai ảnh song song' },
-  { value: 'gallery', label: 'Gallery nhiều ảnh' },
-];
 
 export default function AdminBlogManager() {
   const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editingPost, setEditingPost] = useState<any>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchPosts();
   }, []);
 
-  const fetchPosts = async () => {
+  async function fetchPosts() {
+    setLoading(true);
     try {
       const snapshot = await getDocs(collection(db, 'blogPosts'));
-      const data = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-      setPosts(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    } catch (err) {
-      console.error(err);
+      let data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setPosts(data);
+    } catch(e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
+  }
+
+  const handleEdit = (post: any) => {
+    setEditingPost({
+      ...post,
+      blocks: post.blocks || [],
+      showTOC: post.showTOC ?? true,
+      slug: post.slug || post.id,
+    });
+    setIsCreating(false);
   };
 
-  const handleSaveList = async (post: any) => {
+  const handleCreateNew = () => {
+    setEditingPost({
+      id: '',
+      title: '',
+      slug: '',
+      seoTitle: '',
+      seoDescription: '',
+      category: '',
+      image: '',
+      showTOC: true,
+      blocks: []
+    });
+    setIsCreating(true);
+  };
+
+  const handleCancel = () => {
+    setEditingPost(null);
+    setIsCreating(false);
+  };
+
+  const handleSave = async () => {
+    if (!editingPost.title) return alert("Vui lòng nhập tiêu đề");
+    if (!editingPost.slug) return alert("Vui lòng nhập đường dẫn (slug)");
+
+    const postId = editingPost.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const updateData = { ...editingPost, id: postId };
+
     try {
-      const newId = post.id || post.slug || Date.now().toString();
-      await setDoc(doc(db, 'blogPosts', newId), { ...post, id: newId });
-      fetchPosts();
+      if (isCreating) {
+         const existing = await getDoc(doc(db, 'blogPosts', postId));
+         if (existing.exists()) {
+            alert("Đường dẫn này đã tồn tại, vui lòng chọn đường dẫn khác.");
+            return;
+         }
+      }
+      
+      await setDoc(doc(db, 'blogPosts', postId), updateData, { merge: true });
+      if (!isCreating && postId !== editingPost.id) {
+          // If slug changed, delete old one
+          await deleteDoc(doc(db, 'blogPosts', editingPost.id));
+      }
+
       setEditingPost(null);
-    } catch (err) {
-      console.error(err);
+      setIsCreating(false);
+      fetchPosts();
+    } catch (e) {
+      console.error("Error saving post", e);
+      alert("Đã xảy ra lỗi khi lưu");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bạn có chắc xoá bài viết này?')) return;
-    try {
-      await deleteDoc(doc(db, 'blogPosts', id));
-      fetchPosts();
-    } catch (err) {}
-  };
-
-  if (editingPost) {
-    return <PostEditor post={editingPost} onSave={handleSaveList} onCancel={() => setEditingPost(null)} />;
-  }
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Bài viết Blog</h2>
-        <button onClick={() => setEditingPost({ blocks: [], status: 'draft' })} className="px-4 py-2 flex items-center gap-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800">
-          <Plus className="w-4 h-4" /> Viết Bài Mới
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="animate-pulse flex flex-col gap-4">
-          <div className="h-12 bg-gray-200 rounded-lg"></div>
-          <div className="h-12 bg-gray-100 rounded-lg"></div>
-          <div className="h-12 bg-gray-50 rounded-lg"></div>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse bg-white rounded-xl shadow-sm overflow-hidden border">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="py-3 px-4">Ảnh</th>
-                <th className="py-3 px-4">Tiêu đề</th>
-                <th className="py-3 px-4">Trạng thái</th>
-                <th className="py-3 px-4">Ngày cập nhật</th>
-                <th className="py-3 px-4 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {posts.map(post => (
-                <tr key={post.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4">
-                    {post.image ? <img src={post.image} className="w-16 h-12 object-cover rounded" alt="" /> : <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center"><ImageIcon className="w-5 h-5 text-gray-400"/></div>}
-                  </td>
-                  <td className="py-3 px-4 font-medium max-w-[300px] truncate">{post.title}</td>
-                  <td className="py-3 px-4">
-                    {post.status === 'published' ? <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Đã xuất bản</span> : <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full font-medium">Bản nháp</span>}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-500">{post.date}</td>
-                  <td className="py-3 px-4 text-right">
-                    <button onClick={() => setEditingPost(post)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => handleDelete(post.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                  </td>
-                </tr>
-              ))}
-              {posts.length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-gray-500">Chưa có bài viết nào</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PostEditor({ post, onSave, onCancel }: { post: any, onSave: (p: any) => void, onCancel: () => void }) {
-  const [formData, setFormData] = useState<any>({
-    title: '', slug: '', metaTitle: '', metaDescription: '', image: '', category: '', status: 'draft', date: new Date().toISOString().split('T')[0], ...post, blocks: post.blocks || []
-  });
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleChange = (k: string, v: any) => setFormData((p: any) => ({ ...p, [k]: v }));
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    await onSave(formData);
-    setIsSaving(false);
-  };
-
-  const handleAddBlock = (type: BlockType) => {
-    const newBlock: BlockData = { id: Date.now().toString() + Math.random().toString(36).substr(2, 5), type };
-    if (type === 'bullet_list' || type === 'numbered_list') newBlock.items = [''];
-    if (type === 'table') newBlock.tableData = [['Cột 1', 'Cột 2'], ['Dữ liệu', 'Dữ liệu']];
-    if (type === 'image' || type === 'image_text' || type === 'text_image') newBlock.image = { url: '' };
-    if (type === 'two_images' || type === 'gallery') newBlock.images = [{ url: '' }, { url: '' }];
-    handleChange('blocks', [...formData.blocks, newBlock]);
-  };
-
-  const updateBlock = (index: number, updates: Partial<BlockData>) => {
-    const newBlocks = [...formData.blocks];
-    newBlocks[index] = { ...newBlocks[index], ...updates };
-    handleChange('blocks', newBlocks);
-  };
-
-  const removeBlock = (index: number) => {
-    const newBlocks = [...formData.blocks];
-    newBlocks.splice(index, 1);
-    handleChange('blocks', newBlocks);
-  };
-
-  const moveBlock = (index: number, dir: 'up'|'down') => {
-    const newIdx = dir === 'up' ? index - 1 : index + 1;
-    if (newIdx < 0 || newIdx >= formData.blocks.length) return;
-    const newBlocks = [...formData.blocks];
-    const temp = newBlocks[index];
-    newBlocks[index] = newBlocks[newIdx];
-    newBlocks[newIdx] = temp;
-    handleChange('blocks', newBlocks);
-  };
-
-  const handleImageUpload = async (e: any, callback: (url: string) => void) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    if (confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
       try {
-        const url = await compressImage(file, 1200, 0.8);
-        callback(url);
-      } catch (err) {
-        console.error(err);
+        await deleteDoc(doc(db, 'blogPosts', id));
+        fetchPosts();
+      } catch (e) {
+        console.error(e);
       }
     }
   };
 
+  if (loading) return <div>Đang tải danh sách bài viết...</div>;
+
+  if (editingPost) {
+    return (
+      <BlogEditor 
+        post={editingPost} 
+        onChange={setEditingPost} 
+        onSave={handleSave} 
+        onCancel={handleCancel} 
+      />
+    );
+  }
+
   return (
-    <div className="bg-white rounded-xl shadow border flex flex-col h-full min-h-[800px] w-full">
-      <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 rounded-t-xl">
-        <h2 className="text-2xl font-bold">{post.id ? 'Sửa Bài Viết' : 'Bài Viết Mới'}</h2>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="px-4 py-2 border rounded-lg font-medium hover:bg-gray-50">Huỷ bỏ</button>
-          <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-medium hover:bg-brand-700 disabled:opacity-50 inline-flex items-center gap-2">
-            {isSaving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>}
-            Lưu bài viết
-          </button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <h2 className="text-xl font-bold font-sans">Quản lý Góc kiến thức</h2>
+        <button onClick={handleCreateNew} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
+          <Plus size={18} /> Viết bài mới
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="p-4 font-semibold text-gray-600">Bài viết</th>
+                <th className="p-4 font-semibold text-gray-600">Danh mục</th>
+                <th className="p-4 font-semibold text-gray-600 text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {posts.map(post => (
+                <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                  <td className="p-4">
+                    <div className="font-medium text-gray-900">{post.title}</div>
+                    <div className="text-sm text-gray-500 mt-1">{post.slug}</div>
+                  </td>
+                  <td className="p-4 text-gray-600">{post.category}</td>
+                  <td className="p-4 text-right">
+                    <button onClick={() => handleEdit(post)} className="text-blue-600 hover:text-blue-800 p-2">Sửa</button>
+                    <button onClick={() => handleDelete(post.id)} className="text-red-500 hover:text-red-700 p-2 ml-2">Xóa</button>
+                  </td>
+                </tr>
+              ))}
+              {posts.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="p-8 text-center text-gray-500">Chưa có bài viết nào</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const BLOCK_TYPES = [
+  { id: 'h2', label: 'Tiêu đề mục lớn' },
+  { id: 'h3', label: 'Tiêu đề mục nhỏ' },
+  { id: 'p', label: 'Đoạn văn bản' },
+  { id: 'ul', label: 'Danh sách gạch đầu dòng' },
+  { id: 'ol', label: 'Danh sách đánh số' },
+  { id: 'table', label: 'Bảng' },
+  { id: 'note', label: 'Khung lưu ý' },
+  { id: 'warning', label: 'Khung cảnh báo' },
+  { id: 'advice', label: 'Khung lời khuyên' },
+  { id: 'image', label: 'Ảnh đơn' },
+  { id: 'figure', label: 'Ảnh kèm chú thích' },
+  { id: 'image-text', label: 'Ảnh bên cạnh chữ' },
+  { id: 'images-2', label: 'Hai ảnh song song' },
+  { id: 'gallery', label: 'Bộ sưu tập nhiều ảnh' },
+];
+
+function BlogEditor({ post, onChange, onSave, onCancel }: any) {
+  
+  const setField = (field: string, value: any) => {
+    onChange({ ...post, [field]: value });
+  };
+
+  const addBlock = (type: string) => {
+    const newBlock = {
+      id: crypto.randomUUID(),
+      type,
+      data: getDefaultDataForBlock(type)
+    };
+    setField('blocks', [...(post.blocks || []), newBlock]);
+  };
+
+  const updateBlock = (index: number, data: any) => {
+    const newBlocks = [...post.blocks];
+    newBlocks[index].data = data;
+    setField('blocks', newBlocks);
+  };
+
+  const removeBlock = (index: number) => {
+    if (confirm('Xóa khối này?')) {
+      const newBlocks = [...post.blocks];
+      newBlocks.splice(index, 1);
+      setField('blocks', newBlocks);
+    }
+  };
+
+  const moveBlock = (index: number, dir: number) => {
+    const newBlocks = [...post.blocks];
+    if (index + dir < 0 || index + dir >= newBlocks.length) return;
+    const temp = newBlocks[index];
+    newBlocks[index] = newBlocks[index + dir];
+    newBlocks[index + dir] = temp;
+    setField('blocks', newBlocks);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    const compressed = await compressImage(file, 1200);
+    return compressed;
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 max-w-5xl mx-auto pb-20">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 p-4 flex justify-between items-center rounded-t-xl shadow-sm">
+        <h2 className="text-xl font-bold">Chỉnh sửa bài viết</h2>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Hủy</button>
+          <button onClick={onSave} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Lưu bài viết</button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex gap-6">
-        <div className="flex-1 space-y-6 max-w-4xl">
-          <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-            <h3 className="font-bold text-lg mb-4">Thông tin cơ bản</h3>
+      <div className="p-6 space-y-8">
+        {/* Settings grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
+          <div className="space-y-4 md:col-span-2">
             <div>
-              <label className="block text-sm font-medium mb-1">Tiêu đề <span className="text-red-500">*</span></label>
-              <input type="text" value={formData.title} onChange={e => {
-                handleChange('title', e.target.value);
-                if (!formData.slug && e.target.value) handleChange('slug', e.target.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
-              }} className="w-full px-3 py-2 border rounded-lg focus:ring-brand-500 font-medium text-lg" placeholder="Nhập tiêu đề..." />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề bài viết <span className="text-red-500">*</span></label>
+              <input type="text" value={post.title || ''} onChange={e => {
+                const title = e.target.value;
+                onChange((prev: any) => {
+                  if(!prev.slug || prev.slug === '') {
+                    return {...prev, title, slug: title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, '-')};
+                  }
+                  return {...prev, title};
+                });
+              }} className="w-full border border-gray-300 rounded-lg p-3 text-lg font-bold" placeholder="Nhập tiêu đề..." />
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Slug (URL) <span className="text-red-500">*</span></label>
-                <input type="text" value={formData.slug} onChange={e => handleChange('slug', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-brand-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Danh mục</label>
-                <input type="text" value={formData.category} onChange={e => handleChange('category', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-brand-500" />
-              </div>
+          </div>
+          
+          <div className="space-y-4">
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Đường dẫn bài viết (slug) <span className="text-red-500">*</span></label>
+              <input type="text" value={post.slug || ''} onChange={e => setField('slug', e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" />
             </div>
-
             <div>
-              <label className="block text-sm font-medium mb-1">Trích dẫn</label>
-              <textarea value={formData.excerpt || ''} onChange={e => handleChange('excerpt', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-brand-500 h-20" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề SEO</label>
+              <input type="text" value={post.seoTitle || ''} onChange={e => setField('seoTitle', e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" />
             </div>
-            
             <div>
-               <label className="block text-sm font-medium mb-1">Ảnh đại diện</label>
-               <div className="flex gap-4">
-                  {formData.image && <img src={formData.image} alt="cover" className="w-32 h-20 object-cover rounded-lg border" />}
-                  <div className="flex-1 flex flex-col gap-2">
-                     <input type="text" placeholder="URL ảnh..." value={formData.image} onChange={e => handleChange('image', e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
-                     <input type="file" accept="image/*" onChange={e => handleImageUpload(e, url => handleChange('image', url))} className="text-sm" />
-                  </div>
-               </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả SEO</label>
+              <textarea value={post.seoDescription || ''} onChange={e => setField('seoDescription', e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
+              <input type="text" value={post.category || ''} onChange={e => setField('category', e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border shadow-sm">
-            <h3 className="font-bold text-lg mb-6 flex items-center justify-between">
-              Nội dung bài viết
-            </h3>
-            
-            <div className="space-y-4">
-              {formData.blocks.map((block: BlockData, idx: number) => (
-                <div key={block.id} className="border border-gray-200 rounded-lg bg-gray-50 group">
-                  <div className="flex items-center justify-between p-3 border-b bg-white rounded-t-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600 uppercase tracking-wider">
-                        {BLOCK_TYPES.find(t => t.value === block.type)?.label || block.type}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => moveBlock(idx, 'up')} disabled={idx === 0} className="p-1.5 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowUp className="w-4 h-4"/></button>
-                      <button onClick={() => moveBlock(idx, 'down')} disabled={idx === formData.blocks.length - 1} className="p-1.5 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowDown className="w-4 h-4"/></button>
-                      <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                      <button onClick={() => removeBlock(idx)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4">
-                    {/* H2, H3 */}
-                    {(block.type === 'h2' || block.type === 'h3') && (
-                      <input type="text" value={block.content || ''} onChange={e => updateBlock(idx, { content: e.target.value })} className={`w-full bg-transparent border-0 border-b border-gray-300 focus:ring-0 focus:border-brand-500 px-0 py-2 ${block.type === 'h2' ? 'text-2xl font-bold' : 'text-xl font-semibold'}`} placeholder="Nhập tiêu đề..." />
-                    )}
-                    
-                    {/* Paragraph, Note, Warning, Advice */}
-                    {['paragraph', 'note', 'warning', 'advice'].includes(block.type) && (
-                      <textarea value={block.content || ''} onChange={e => updateBlock(idx, { content: e.target.value })} className="w-full bg-white border border-gray-300 rounded-lg p-3 min-h-[100px] focus:ring-2 focus:ring-brand-500" placeholder="Nhập nội dung văn bản..." />
-                    )}
+          <div className="space-y-4">
+             <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ảnh đại diện</label>
+                <div className="flex flex-col gap-2">
+                  {post.image && <img src={post.image} className="h-32 object-cover rounded-lg border" alt="preview" />}
+                  <input type="file" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if(file) {
+                      const dataUrl = await handleImageUpload(file);
+                      setField('image', dataUrl);
+                    }
+                  }} className="text-sm" />
+                </div>
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <input type="checkbox" id="showTOC" checked={post.showTOC !== false} onChange={e => setField('showTOC', e.target.checked)} className="w-4 h-4 text-blue-600 border-gray-300 rounded" />
+              <label htmlFor="showTOC" className="text-sm font-medium text-gray-700">Hiển thị mục lục bài viết tự động</label>
+            </div>
+          </div>
+        </div>
 
-                    {/* Lists */}
-                    {(block.type === 'bullet_list' || block.type === 'numbered_list') && (
-                      <div className="space-y-2">
-                        {block.items?.map((item, itemIdx) => (
-                          <div key={itemIdx} className="flex gap-2 items-start">
-                            <span className="mt-2 text-gray-400">{block.type === 'numbered_list' ? `${itemIdx + 1}.` : '•'}</span>
-                            <textarea value={item} onChange={e => {
-                              const newItems = [...(block.items || [])];
-                              newItems[itemIdx] = e.target.value;
-                              updateBlock(idx, { items: newItems });
-                            }} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white" rows={2}/>
-                            <button onClick={() => {
-                              const newItems = [...(block.items || [])];
-                              newItems.splice(itemIdx, 1);
-                              updateBlock(idx, { items: newItems });
-                            }} className="p-2 text-red-500 hover:bg-red-50 rounded"><X className="w-4 h-4"/></button>
-                          </div>
-                        ))}
-                        <button onClick={() => updateBlock(idx, { items: [...(block.items || []), ''] })} className="text-sm font-medium text-brand-600 hover:text-brand-800">+ Thêm dòng</button>
-                      </div>
-                    )}
+        {/* Blocks Editor */}
+        <div className="space-y-6">
+          <h3 className="text-lg font-bold border-b pb-2">Nội dung bài viết</h3>
+          
+          <div className="space-y-4">
+            {post.blocks?.map((block: any, index: number) => (
+              <div key={block.id} className="relative group bg-white border border-gray-200 rounded-xl shadow-sm p-4 hover:border-blue-300 transition-colors">
+                 <div className="absolute top-2 left-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => moveBlock(index, -1)} disabled={index===0} className="p-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 disabled:opacity-30"><ChevronUp size={16} /></button>
+                    <div className="p-1 cursor-move text-gray-400 hover:text-gray-600 flex justify-center"><GripVertical size={16} /></div>
+                    <button onClick={() => moveBlock(index, 1)} disabled={index===post.blocks.length-1} className="p-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 disabled:opacity-30"><ChevronDown size={16} /></button>
+                 </div>
+                 
+                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => removeBlock(index)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg"><Trash2 size={16} /></button>
+                 </div>
 
-                    {/* Single Image */}
-                    {block.type === 'image' && (
-                      <div className="space-y-3 p-4 bg-white border rounded-lg">
-                        {block.image?.url && <img src={block.image.url} alt="" className="w-full h-48 object-contain bg-gray-100 rounded" />}
-                        <div className="flex gap-3">
-                          <input type="text" placeholder="URL Ảnh" value={block.image?.url || ''} onChange={e => updateBlock(idx, { image: { ...block.image, url: e.target.value } as any })} className="flex-1 px-3 py-2 border rounded" />
-                          <input type="file" accept="image/*" onChange={e => handleImageUpload(e, url => updateBlock(idx, { image: { ...block.image, url } as any }))} className="w-48 text-sm pt-2" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <input type="text" placeholder="Alt text SEO" value={block.image?.alt || ''} onChange={e => updateBlock(idx, { image: { ...block.image, alt: e.target.value } as any })} className="px-3 py-2 border rounded" />
-                          <input type="text" placeholder="Caption (ghi chú ảnh)" value={block.image?.caption || ''} onChange={e => updateBlock(idx, { image: { ...block.image, caption: e.target.value } as any })} className="px-3 py-2 border rounded" />
-                        </div>
-                      </div>
-                    )}
+                 <div className="ml-8 mr-6">
+                    <div className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-3">{BLOCK_TYPES.find(b => b.id === block.type)?.label || block.type}</div>
+                    <BlockEditor block={block} onChange={(data: any) => updateBlock(index, data)} onUpload={handleImageUpload} />
+                 </div>
+              </div>
+            ))}
+          </div>
 
-                    {/* Image + Text */}
-                    {(block.type === 'image_text' || block.type === 'text_image') && (
-                      <div className="space-y-3 bg-white p-4 border rounded-lg">
-                        <div className="flex flex-col md:flex-row gap-4">
-                          <div className={`w-full md:w-1/3 space-y-2 border-b md:border-b-0 md:border-r pb-4 md:pb-0 md:pr-4 ${block.type === 'text_image' ? 'md:order-2 md:border-l md:border-r-0 md:pl-4 md:pr-0' : ''}`}>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Hình ảnh</label>
-                            {block.image?.url && <img src={block.image.url} alt="" className="w-full h-32 object-cover rounded" />}
-                            <input type="text" placeholder="URL Ảnh" value={block.image?.url || ''} onChange={e => updateBlock(idx, { image: { ...block.image, url: e.target.value } as any })} className="w-full px-2 py-1 text-sm border rounded" />
-                            <input type="file" accept="image/*" onChange={e => handleImageUpload(e, url => updateBlock(idx, { image: { ...block.image, url } as any }))} className="w-full text-xs" />
-                            <input type="text" placeholder="Alt text" value={block.image?.alt || ''} onChange={e => updateBlock(idx, { image: { ...block.image, alt: e.target.value } as any })} className="w-full px-2 py-1 text-sm border rounded" />  
-                          </div>
-                          <div className={`w-full md:w-2/3 space-y-2 ${block.type === 'text_image' ? 'md:order-1' : ''}`}>
-                             <label className="text-xs font-bold text-gray-500 uppercase">Nội dung văn bản</label>
-                             <textarea value={block.content || ''} onChange={e => updateBlock(idx, { content: e.target.value })} className="w-full h-32 px-3 py-2 border rounded focus:ring-2 focus:ring-brand-500" placeholder="Nhập văn bản hiển thị song song với ảnh..." />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+          <div className="border border-dashed border-gray-300 rounded-xl p-6 bg-gray-50 flex flex-col items-center gap-4">
+             <div className="text-gray-500 font-medium">Thêm khối nội dung mới</div>
+             <div className="flex flex-wrap gap-2 justify-center">
+               {BLOCK_TYPES.map(type => (
+                 <button key={type.id} onClick={() => addBlock(type.id)} className="px-3 py-1.5 bg-white border border-gray-200 text-sm font-medium rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors shadow-sm">
+                   + {type.label}
+                 </button>
+               ))}
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-                    {/* Gallery / 2 Images */}
-                    {(block.type === 'two_images' || block.type === 'gallery') && (
-                      <div className="space-y-4 p-4 bg-white border rounded-lg">
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                          {block.images?.map((img, imgIdx) => (
-                            <div key={imgIdx} className="space-y-2 border p-3 rounded relative group">
-                              <button onClick={() => {
-                                  const newImgs = [...(block.images || [])];
-                                  newImgs.splice(imgIdx, 1);
-                                  updateBlock(idx, { images: newImgs });
-                                }} className="absolute top-2 right-2 p-1 bg-white rounded shadow text-red-500 opacity-0 group-hover:opacity-100 z-10"><X className="w-4 h-4"/></button>
-                              
-                              {img.url && <img src={img.url} alt="" className="w-full h-32 object-cover rounded" />}
-                              <input type="text" placeholder="URL Ảnh" value={img.url || ''} onChange={e => {
-                                const newImgs = [...(block.images || [])];
-                                newImgs[imgIdx] = { ...img, url: e.target.value };
-                                updateBlock(idx, { images: newImgs });
-                              }} className="w-full px-2 py-1 text-sm border rounded" />
-                              <input type="file" accept="image/*" onChange={e => handleImageUpload(e, url => {
-                                const newImgs = [...(block.images || [])];
-                                newImgs[imgIdx] = { ...img, url };
-                                updateBlock(idx, { images: newImgs });
-                              })} className="w-full text-xs" />
-                              <input type="text" placeholder="Alt text" value={img.alt || ''} onChange={e => {
-                                const newImgs = [...(block.images || [])];
-                                newImgs[imgIdx] = { ...img, alt: e.target.value };
-                                updateBlock(idx, { images: newImgs });
-                              }} className="w-full px-2 py-1 text-sm border rounded" />
-                              <input type="text" placeholder="Caption" value={img.caption || ''} onChange={e => {
-                                const newImgs = [...(block.images || [])];
-                                newImgs[imgIdx] = { ...img, caption: e.target.value };
-                                updateBlock(idx, { images: newImgs });
-                              }} className="w-full px-2 py-1 text-sm border rounded" />
-                            </div>
-                          ))}
-                        </div>
-                        {block.type === 'gallery' && (
-                          <button onClick={() => updateBlock(idx, { images: [...(block.images || []), { url: '' }] })} className="text-sm font-medium text-brand-600">+ Thêm ảnh vào gallery</button>
-                        )}
-                      </div>
-                    )}
+function getDefaultDataForBlock(type: string) {
+  switch(type) {
+    case 'h2':
+    case 'h3':
+    case 'p':
+      return { text: '' };
+    case 'ul':
+    case 'ol':
+      return { items: [''] };
+    case 'table':
+      return { headers: ['Cột 1', 'Cột 2'], rows: [['', '']] };
+    case 'note':
+    case 'warning':
+    case 'advice':
+      return { title: '', content: '' };
+    case 'image':
+      return { url: '', alt: '' };
+    case 'figure':
+      return { url: '', alt: '', caption: '' };
+    case 'image-text':
+      return { url: '', alt: '', text: '', layout: 'img-left' }; // img-left, img-right
+    case 'images-2':
+      return { url1: '', alt1: '', url2: '', alt2: '' };
+    case 'gallery':
+      return { images: [] }; // {url, alt} array
+    default:
+      return {};
+  }
+}
 
-                    {/* Table */}
-                    {block.type === 'table' && (
-                      <div className="overflow-x-auto bg-white p-4 border rounded-lg">
-                        <table className="w-full border-collapse">
-                          <tbody>
-                            {block.tableData?.map((row, rowIdx) => (
-                              <tr key={rowIdx}>
-                                {row.map((cell, colIdx) => (
-                                  <td key={colIdx} className="p-1">
-                                    <input type="text" value={cell} onChange={e => {
-                                      const newData = [...(block.tableData || [])];
-                                      newData[rowIdx] = [...newData[rowIdx]];
-                                      newData[rowIdx][colIdx] = e.target.value;
-                                      updateBlock(idx, { tableData: newData });
-                                    }} className={`w-full px-2 py-2 border rounded ${rowIdx === 0 ? 'bg-gray-100 font-bold' : ''}`} />
-                                  </td>
-                                ))}
-                                <td className="w-8">
-                                  <button onClick={() => {
-                                    const newData = [...(block.tableData || [])];
-                                    newData.splice(rowIdx, 1);
-                                    updateBlock(idx, { tableData: newData });
-                                  }} className="p-1 text-red-500 hover:bg-red-50 rounded"><X className="w-4 h-4"/></button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <div className="mt-3 flex gap-4">
-                          <button onClick={() => {
-                            const newData = [...(block.tableData || [])];
-                            const numCols = newData[0]?.length || 2;
-                            newData.push(Array(numCols).fill(''));
-                            updateBlock(idx, { tableData: newData });
-                          }} className="text-sm font-medium text-brand-600">+ Thêm Hàng</button>
-                          
-                          <button onClick={() => {
-                             const newData = [...(block.tableData || [])];
-                             newData.forEach(r => r.push(''));
-                             updateBlock(idx, { tableData: newData });
-                          }} className="text-sm font-medium text-brand-600">+ Thêm Cột</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+function BlockEditor({ block, onChange, onUpload }: any) {
+  const handleChange = (field: string, val: any) => {
+    onChange({...block.data, [field]: val});
+  };
+
+  const handleImageSelect = async (e: any, field: string) => {
+     const file = e.target.files?.[0];
+     if(file) {
+        const url = await onUpload(file);
+        handleChange(field, url);
+     }
+  };
+
+  switch(block.type) {
+    case 'h2':
+      return <input type="text" value={block.data.text} onChange={e => handleChange('text', e.target.value)} className="w-full text-2xl font-bold border-b border-gray-200 focus:border-blue-500 outline-none pb-1" placeholder="Nhập tiêu đề mục lớn..." />;
+    case 'h3':
+      return <input type="text" value={block.data.text} onChange={e => handleChange('text', e.target.value)} className="w-full text-xl font-semibold border-b border-gray-200 focus:border-blue-500 outline-none pb-1" placeholder="Nhập tiêu đề mục nhỏ..." />;
+    case 'p':
+      return <textarea value={block.data.text} onChange={e => handleChange('text', e.target.value)} className="w-full h-32 p-3 border border-gray-200 rounded-lg focus:border-blue-500 outline-none resize-y" placeholder="Nhập nội dung đoạn văn..." />;
+    
+    case 'ul':
+    case 'ol':
+      return (
+        <div className="space-y-2">
+          {block.data.items?.map((item: string, i: number) => (
+            <div key={i} className="flex gap-2 items-start">
+               <span className="mt-2 text-gray-400">{block.type === 'ul' ? '•' : `${i+1}.`}</span>
+               <input type="text" value={item} onChange={e => {
+                  const newItems = [...block.data.items];
+                  newItems[i] = e.target.value;
+                  handleChange('items', newItems);
+               }} className="flex-1 p-2 border border-gray-200 rounded-lg outline-none focus:border-blue-500" />
+               <button onClick={() => {
+                  const newItems = [...block.data.items];
+                  newItems.splice(i, 1);
+                  handleChange('items', newItems);
+               }} className="p-2 text-red-400 hover:text-red-600 mt-0.5"><Trash2 size={16}/></button>
+            </div>
+          ))}
+          <button onClick={() => handleChange('items', [...(block.data.items || []), ''])} className="text-sm text-blue-600 hover:underline">+ Thêm dòng</button>
+        </div>
+      );
+
+    case 'note':
+    case 'warning':
+    case 'advice':
+      return (
+         <div className={`p-4 rounded-lg border-l-4 ${block.type === 'note' ? 'bg-blue-50 border-blue-500' : block.type === 'warning' ? 'bg-amber-50 border-amber-500' : 'bg-green-50 border-green-500'}`}>
+            <input type="text" value={block.data.title} onChange={e => handleChange('title', e.target.value)} className="w-full bg-transparent font-bold text-gray-800 outline-none mb-2 placeholder-gray-400" placeholder="Tiêu đề khung (tùy chọn)" />
+            <textarea value={block.data.content} onChange={e => handleChange('content', e.target.value)} className="w-full h-24 bg-transparent outline-none resize-y placeholder-gray-400" placeholder="Nội dung chi tiết..." />
+         </div>
+      );
+
+    case 'image':
+      return (
+        <div className="space-y-3">
+          <div className="flex gap-4 items-center">
+             <input type="file" accept="image/*" onChange={e => handleImageSelect(e, 'url')} className="text-sm" />
+             <span className="text-xs text-gray-500">Hoặc URL:</span>
+             <input type="text" value={block.data.url} onChange={e => handleChange('url', e.target.value)} placeholder="https://..." className="flex-1 border p-2 rounded text-sm"/>
+          </div>
+          {block.data.url && <img src={block.data.url} alt="preview" className="max-h-64 object-contain bg-gray-100 rounded" />}
+          <input type="text" value={block.data.alt || ''} onChange={e => handleChange('alt', e.target.value)} placeholder="Mô tả ảnh cho SEO (Alt text)" className="w-full border p-2 rounded text-sm" />
+        </div>
+      );
+
+    case 'figure':
+      return (
+        <div className="space-y-3">
+          <div className="flex gap-4 items-center">
+             <input type="file" accept="image/*" onChange={e => handleImageSelect(e, 'url')} className="text-sm" />
+             <input type="text" value={block.data.url} onChange={e => handleChange('url', e.target.value)} placeholder="URL ảnh" className="flex-1 border p-2 rounded text-sm"/>
+          </div>
+          {block.data.url && <img src={block.data.url} alt="preview" className="max-h-64 object-contain bg-gray-100 rounded mx-auto" />}
+          <input type="text" value={block.data.caption || ''} onChange={e => handleChange('caption', e.target.value)} placeholder="Chú thích hiển thị dưới ảnh" className="w-full border p-2 rounded" />
+          <input type="text" value={block.data.alt || ''} onChange={e => handleChange('alt', e.target.value)} placeholder="Mô tả SEO" className="w-full border p-2 rounded text-sm" />
+        </div>
+      );
+
+    case 'image-text':
+      return (
+        <div className="space-y-3 border p-4 rounded bg-gray-50">
+          <div className="flex gap-4 mb-2">
+            <label className="flex items-center gap-1"><input type="radio" checked={block.data.layout === 'img-left'} onChange={() => handleChange('layout', 'img-left')} /> Ảnh bên trái</label>
+            <label className="flex items-center gap-1"><input type="radio" checked={block.data.layout === 'img-right'} onChange={() => handleChange('layout', 'img-right')} /> Ảnh bên phải</label>
+          </div>
+          <div className={`flex gap-4 ${block.data.layout === 'img-right' ? 'flex-row-reverse' : ''}`}>
+             <div className="flex-1 space-y-2 border-r pr-4">
+                <input type="file" accept="image/*" onChange={e => handleImageSelect(e, 'url')} className="text-sm w-full mb-2" />
+                {block.data.url && <img src={block.data.url} className="w-full aspect-square object-cover rounded" alt="" />}
+                <input type="text" value={block.data.alt || ''} onChange={e => handleChange('alt', e.target.value)} placeholder="Mô tả SEO ảnh" className="w-full border p-2 rounded text-sm" />
+             </div>
+             <div className="flex-[2]">
+                <textarea value={block.data.text || ''} onChange={e => handleChange('text', e.target.value)} className="w-full h-full min-h-[150px] p-2 border rounded resize-y" placeholder="Nội dung bên cạnh ảnh..." />
+             </div>
+          </div>
+        </div>
+      );
+      
+    case 'images-2':
+      return (
+        <div className="grid grid-cols-2 gap-4">
+           {['1', '2'].map(num => (
+              <div key={num} className="space-y-2 border p-3 rounded bg-gray-50">
+                <div className="text-sm font-semibold text-gray-500">Ảnh {num}</div>
+                <input type="file" accept="image/*" onChange={e => handleImageSelect(e, `url${num}`)} className="text-xs file:mr-2 w-full" />
+                {block.data[`url${num}`] && <img src={block.data[`url${num}`]} className="w-full h-32 object-cover rounded" alt="" />}
+                <input type="text" value={block.data[`alt${num}`] || ''} onChange={e => handleChange(`alt${num}`, e.target.value)} placeholder="Mô tả SEO" className="w-full border p-1 rounded text-sm" />
+              </div>
+           ))}
+        </div>
+      );
+
+    case 'gallery':
+      const images = block.data.images || [];
+      return (
+        <div className="space-y-4">
+           <div className="grid grid-cols-3 gap-4">
+              {images.map((img: any, i: number) => (
+                <div key={i} className="relative group border p-2 rounded cursor-default bg-gray-50">
+                   <img src={img.url} className="w-full h-24 object-cover rounded mb-2" alt=""/>
+                   <input type="text" value={img.alt} onChange={e => {
+                     const newImgs = [...images]; newImgs[i].alt = e.target.value; handleChange('images', newImgs);
+                   }} className="w-full text-xs p-1 border rounded" placeholder="Alt text"/>
+                   <button onClick={() => {
+                      const newImgs = [...images]; newImgs.splice(i, 1); handleChange('images', newImgs);
+                   }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"><X size={12}/></button>
                 </div>
               ))}
-
-              {/* Add Block Menu */}
-              <div className="pt-4 mt-6 border-t border-dashed border-gray-300">
-                <label className="text-sm font-bold text-gray-700 mb-3 block">Thêm Block mới:</label>
-                <div className="flex flex-wrap gap-2">
-                  {BLOCK_TYPES.map(type => (
-                    <button key={type.value} onClick={() => handleAddBlock(type.value as BlockType)} className="px-3 py-1.5 bg-gray-100 hover:bg-brand-50 hover:text-brand-700 text-sm font-medium text-gray-700 rounded-lg border transition-colors shadow-sm active:scale-95">
-                      + {type.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="border border-dashed border-gray-300 rounded flex flex-col items-center justify-center p-4 min-h-[140px] hover:bg-gray-50 cursor-pointer relative">
+                 <input type="file" accept="image/*" multiple onChange={async e => {
+                    const files = Array.from(e.target.files || []);
+                    const newImages = [...images];
+                    for(let f of files) {
+                       const url = await onUpload(f);
+                       newImages.push({url, alt: ''});
+                    }
+                    handleChange('images', newImages);
+                 }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                 <ImageIcon className="text-gray-400 mb-2" />
+                 <span className="text-sm text-gray-500">Thêm ảnh</span>
               </div>
-            </div>
-          </div>
+           </div>
         </div>
+      );
 
-        {/* Sidebar settings */}
-        <div className="w-72 flex-shrink-0 space-y-6">
-          <div className="bg-white p-5 rounded-xl border shadow-sm space-y-4">
-            <h3 className="font-bold text-lg mb-2">Trạng thái & SEO</h3>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Trạng thái</label>
-              <select value={formData.status} onChange={e => handleChange('status', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-brand-500">
-                <option value="draft">Bản nháp</option>
-                <option value="published">Đã xuất bản</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Ngày đăng</label>
-              <input type="date" value={formData.date} onChange={e => handleChange('date', e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
-            </div>
+    case 'table':
+      return <TableEditor block={block} onChange={onChange} />;
 
-            <div className="pt-4 border-t">
-              <label className="block text-sm font-medium mb-1">Meta Title</label>
-              <input type="text" value={formData.metaTitle || ''} onChange={e => handleChange('metaTitle', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-brand-500 text-sm" placeholder="Mặc định lấy tiêu đề bài" />
-              <p className="text-xs text-gray-500 mt-1">SEO Title lý tưởng ~60 ký tự</p>
-            </div>
+    default:
+      return <div className="text-gray-500">Loại khối không được hỗ trợ</div>;
+  }
+}
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Meta Description</label>
-              <textarea value={formData.metaDescription || ''} onChange={e => handleChange('metaDescription', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-brand-500 h-24 text-sm" placeholder="Mô tả SEO..." />
-              <p className="text-xs text-gray-500 mt-1">SEO Description ~150-160 ký tự</p>
-            </div>
-          </div>
-        </div>
+function TableEditor({ block, onChange }: any) {
+  const data = block.data || { headers: [], rows: [] };
+  const headers = data.headers || [];
+  const rows = data.rows || [];
+
+  const updateHeader = (i: number, val: string) => {
+    const newHeaders = [...headers];
+    newHeaders[i] = val;
+    onChange({ ...data, headers: newHeaders });
+  };
+
+  const updateCell = (ri: number, ci: number, val: string) => {
+    const newRows = [...rows];
+    newRows[ri] = [...newRows[ri]];
+    newRows[ri][ci] = val;
+    onChange({ ...data, rows: newRows });
+  };
+
+  const addRow = () => {
+    onChange({ ...data, rows: [...rows, headers.map(() => '')] });
+  };
+
+  const addCol = () => {
+    onChange({ 
+      ...data, 
+      headers: [...headers, 'Cột mới'], 
+      rows: rows.map((r: any) => [...r, '']) 
+    });
+  };
+
+  const removeRow = (ri: number) => {
+    const newRows = [...rows];
+    newRows.splice(ri, 1);
+    onChange({ ...data, rows: newRows });
+  };
+
+  const removeCol = (ci: number) => {
+    const newHeaders = [...headers];
+    newHeaders.splice(ci, 1);
+    const newRows = rows.map((r: any) => { const nr = [...r]; nr.splice(ci, 1); return nr; });
+    onChange({ ...data, headers: newHeaders, rows: newRows });
+  };
+
+  return (
+    <div className="overflow-x-auto border rounded-lg bg-gray-50 p-4">
+      <div className="flex gap-2 mb-4">
+         <button onClick={addCol} className="px-3 py-1 bg-white border rounded text-sm shadow-sm hover:text-blue-600">+ Thêm cột</button>
+         <button onClick={addRow} className="px-3 py-1 bg-white border rounded text-sm shadow-sm hover:text-blue-600">+ Thêm dòng</button>
       </div>
+      <table className="w-full text-left min-w-max border-collapse bg-white">
+        <thead>
+          <tr>
+            {headers.map((h: string, i: number) => (
+              <th key={i} className="border p-2 bg-gray-100 relative group">
+                <input type="text" value={h} onChange={e => updateHeader(i, e.target.value)} className="w-full bg-transparent font-medium border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none" />
+                {headers.length > 1 && <button onClick={() => removeCol(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><X size={12}/></button>}
+              </th>
+            ))}
+            <th className="w-8"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row: any[], ri: number) => (
+            <tr key={ri} className="group">
+              {row.map((cell: string, ci: number) => (
+                <td key={ci} className="border p-2">
+                   <textarea value={cell} onChange={e => updateCell(ri, ci, e.target.value)} className="w-full h-10 min-w-[120px] bg-transparent outline-none resize-y" />
+                </td>
+              ))}
+              <td className="p-2 border-none">
+                 <button onClick={() => removeRow(ri)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

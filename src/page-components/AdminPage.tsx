@@ -6,8 +6,8 @@ import { categories as defaultCategories } from '../data/products';
 import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
 import AdminUsersManager from '../components/AdminUsersManager';
 import AdminTestimonialsManager from '../components/AdminTestimonialsManager';
-import AdminBlogManager from '../components/AdminBlogManager';
 import SiteSettingsManager from '../components/SiteSettingsManager';
+import AdminBlogManager from '../components/AdminBlogManager';
 import Link from 'next/link';
 import { compressImage } from '../lib/imageUtils';
 
@@ -64,7 +64,7 @@ const AdminLayout = ({ children, activeTab, setActiveTab, user, onLogout }: any)
                 {tab === 'Site Settings' && 'Cài đặt Giao diện & Ảnh'}
                 {tab === 'Categories & Products' && 'Danh mục & Sản phẩm'}
                 {tab === 'Testimonials' && 'Lời tâm sự'}
-                {tab === 'Blog Posts' && 'Bài viết Blog'}
+                {tab === 'Blog Posts' && 'Góc kiến thức'}
                 {tab === 'FAQs' && 'Hỏi Đáp (FAQs)'}
                 {tab === 'Admin Users' && 'Thành viên Quản trị'}
               </button>
