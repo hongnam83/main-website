@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getDocs, getDoc } from '../localDB';
@@ -219,6 +219,21 @@ function BlogEditor({ post, onChange, onSave, onCancel }: any) {
     return compressed;
   };
 
+  const indents = useMemo(() => {
+    let contentIndent = 0;
+    return post.blocks?.map((block: any) => {
+      if (block.type === 'h2') {
+        contentIndent = 1;
+        return 0;
+      }
+      if (block.type === 'h3') {
+        contentIndent = 2;
+        return 1;
+      }
+      return contentIndent;
+    }) || [];
+  }, [post.blocks]);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 max-w-5xl mx-auto pb-20">
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 p-4 flex justify-between items-center rounded-t-xl shadow-sm">
@@ -292,8 +307,11 @@ function BlogEditor({ post, onChange, onSave, onCancel }: any) {
           <h3 className="text-lg font-bold border-b pb-2">Nội dung bài viết</h3>
           
           <div className="space-y-4">
-            {post.blocks?.map((block: any, index: number) => (
-              <div key={block.id} className="relative group bg-white border border-gray-200 rounded-xl shadow-sm p-4 hover:border-blue-300 transition-colors">
+            {post.blocks?.map((block: any, index: number) => {
+              const indent = indents[index] || 0;
+              const marginClass = indent === 0 ? 'ml-0' : indent === 1 ? 'ml-8' : 'ml-16';
+              return (
+              <div key={block.id} className={`relative group bg-white border border-gray-200 rounded-xl shadow-sm p-4 hover:border-blue-300 transition-all ${marginClass}`}>
                  <div className="absolute top-2 left-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => moveBlock(index, -1)} disabled={index===0} className="p-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 disabled:opacity-30"><ChevronUp size={16} /></button>
                     <div className="p-1 cursor-move text-gray-400 hover:text-gray-600 flex justify-center"><GripVertical size={16} /></div>
@@ -309,7 +327,8 @@ function BlogEditor({ post, onChange, onSave, onCancel }: any) {
                     <BlockEditor block={block} onChange={(data: any) => updateBlock(index, data)} onUpload={handleImageUpload} />
                  </div>
               </div>
-            ))}
+            );
+          })}
           </div>
 
           <div className="border border-dashed border-gray-300 rounded-xl p-6 bg-gray-50 flex flex-col items-center gap-4">
