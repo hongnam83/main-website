@@ -19,7 +19,8 @@ export default function BlogPage() {
     const fetchPosts = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'blogPosts'));
-        const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let posts = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        posts = posts.filter((p: any) => p.status !== 'draft');
         if (posts.length > 0) setBlogPosts(posts);
       } catch (err) {
         // console.warn('Firebase fetch failed:', err);
@@ -51,6 +52,9 @@ export default function BlogPage() {
     return post[field];
   };
 
+  // Ensure default data is also filtered if missing status
+  const filteredBlogPosts = blogPosts.filter((p: any) => p.status !== 'draft');
+
   return (
     <main className="pt-24 pb-24 min-h-screen bg-gray-50">
       <SEO 
@@ -76,7 +80,7 @@ export default function BlogPage() {
         )}
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {blogPosts.slice(0, visibleCount).map((post, index) => (
+          {filteredBlogPosts.slice(0, visibleCount).map((post, index) => (
             <Link href={`/blog/${post.id}`} key={post.id} className="block group cursor-pointer h-full">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -105,7 +109,7 @@ export default function BlogPage() {
                     {getLocalized(post, 'title')}
                   </h4>
                   <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">
-                    {getLocalized(post, 'excerpt')}
+                    {getLocalized(post, 'excerpt') || post.seoDescription}
                   </p>
                   <div className="mt-auto pt-4 flex items-center text-sm font-medium text-brand-800 border-t border-gray-50">
                     {t("Đọc tiếp")} <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
@@ -116,13 +120,13 @@ export default function BlogPage() {
           ))}
         </div>
 
-        {visibleCount < blogPosts.length && (
+        {visibleCount < filteredBlogPosts.length && (
           <div className="mt-16 text-center">
             <button 
               onClick={loadMore}
               className="px-8 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-full shadow-sm hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95"
             >
-              {t("Xem thêm")} ({blogPosts.length - visibleCount})
+              {t("Xem thêm")} ({filteredBlogPosts.length - visibleCount})
             </button>
           </div>
         )}
