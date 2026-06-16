@@ -85,3 +85,18 @@ body {
   color: var(--color-gray-600);
   font-style: italic;
 }
+
+/* Image Description Centering */
+.prose-brand img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 1rem;
+}
+.prose-brand img + em {
+  display: block;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-gray-500);
+  margin-top: 0.5rem;
+}

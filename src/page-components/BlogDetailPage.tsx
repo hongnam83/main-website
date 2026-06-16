@@ -333,15 +333,16 @@ function BlockRenderer({ blocks, showTOC }: { blocks: any[], showTOC?: boolean }
                  );
               case 'image':
                  return (
-                   <div key={block.id} className="my-10 w-full">
-                     <img src={data.url} alt={data.alt} loading="lazy" className="w-full h-auto rounded-2xl" />
+                   <div key={block.id} className="my-10 w-full flex flex-col items-center text-center">
+                     <img src={data.url} alt={data.alt} loading="lazy" className="max-w-full h-auto rounded-2xl mx-auto" />
+                     {data.alt && <p className="text-sm text-gray-500 italic mt-3 text-center text-balance">{data.alt}</p>}
                    </div>
                  );
               case 'figure':
                  return (
-                   <figure key={block.id} className="my-10 w-full text-center">
-                     <img src={data.url} alt={data.alt} loading="lazy" className="w-full h-auto rounded-2xl mb-3" />
-                     {data.caption && <figcaption className="text-sm text-gray-500 italic">{data.caption}</figcaption>}
+                   <figure key={block.id} className="my-10 w-full flex flex-col items-center text-center">
+                     <img src={data.url} alt={data.alt} loading="lazy" className="max-w-full h-auto rounded-2xl mb-3 mx-auto" />
+                     {data.caption && <figcaption className="text-sm text-gray-500 italic text-center text-balance">{data.caption}</figcaption>}
                    </figure>
                  );
               case 'image-text':

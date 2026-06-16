@@ -12,6 +12,11 @@ function QuillEditor({ value, onChange, placeholder }: any) {
   const quillRef = useRef<any>(null);
   // To avoid onChange loop, track current value
   const valueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -34,8 +39,12 @@ function QuillEditor({ value, onChange, placeholder }: any) {
           quillRef.current.on('text-change', () => {
             if (quillRef.current) {
               const html = quillRef.current.root.innerHTML;
-              valueRef.current = html;
-              onChange(html);
+              if (html !== valueRef.current) {
+                valueRef.current = html;
+                if (onChangeRef.current) {
+                   onChangeRef.current(html);
+                }
+              }
             }
           });
           if (value) {
@@ -126,9 +135,15 @@ export default function AdminBlogManager() {
     setIsCreating(false);
   };
 
-  const handleSave = async (forceStatus?: 'draft' | 'published' | 'trash') => {
-    if (!editingPost.title) return alert("Vui lòng nhập tiêu đề");
-    if (!editingPost.slug) return alert("Vui lòng nhập đường dẫn (slug)");
+  const handleSave = async (forceStatus?: 'draft' | 'published' | 'trash', isBackgroundMode = false) => {
+    if (!editingPost.title) {
+       if (isBackgroundMode) return;
+       return alert("Vui lòng nhập tiêu đề");
+    }
+    if (!editingPost.slug) {
+       if (isBackgroundMode) return;
+       return alert("Vui lòng nhập đường dẫn (slug)");
+    }
 
     const postId = editingPost.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const updateData = { 
@@ -142,6 +157,7 @@ export default function AdminBlogManager() {
       if (isCreating) {
          const existing = await getDoc(doc(db, 'blogPosts', postId));
          if (existing.exists()) {
+            if (isBackgroundMode) return;
             alert("Đường dẫn này đã tồn tại, vui lòng chọn đường dẫn khác.");
             return;
          }
@@ -153,12 +169,17 @@ export default function AdminBlogManager() {
           await deleteDoc(doc(db, 'blogPosts', editingPost.id));
       }
 
-      setEditingPost(null);
-      setIsCreating(false);
-      fetchPosts();
+      if (!isBackgroundMode) {
+         setEditingPost(null);
+         setIsCreating(false);
+         fetchPosts();
+      } else {
+         setIsCreating(false);
+         setEditingPost((prev: any) => ({...prev, id: postId}));
+      }
     } catch (e) {
       console.error("Error saving post", e);
-      alert("Đã xảy ra lỗi khi lưu");
+      if (!isBackgroundMode) alert("Đã xảy ra lỗi khi lưu");
     }
   };
 
@@ -201,6 +222,7 @@ export default function AdminBlogManager() {
         post={editingPost} 
         onChange={setEditingPost} 
         onSave={handleSave} 
+        onAutoSave={(status: any) => handleSave(status, true)}
         onCancel={handleCancel} 
       />
     );
@@ -311,8 +333,42 @@ const BLOCK_TYPES = [
   { id: 'gallery', label: 'Bộ sưu tập' },
 ];
 
-function BlogEditor({ post, onChange, onSave, onCancel }: any) {
+function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
   
+  const autoSaveRef = useRef(onAutoSave);
+  const postRef = useRef(post);
+
+  useEffect(() => {
+    autoSaveRef.current = onAutoSave;
+    postRef.current = post;
+  }, [onAutoSave, post]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (postRef.current?.status === 'draft') {
+        autoSaveRef.current?.('draft');
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    const intervalId = setInterval(() => {
+      // Auto save every 15 seconds if nothing has been saved or it is a draft
+      if (postRef.current?.status === 'draft' || !postRef.current?.id) {
+         autoSaveRef.current?.('draft');
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      clearInterval(intervalId);
+      // Attempt to save when the component unmounts (e.g. user leaves page in SPA)
+      if (postRef.current?.status === 'draft' || !postRef.current?.id) {
+         autoSaveRef.current?.('draft');
+      }
+    };
+  }, []);
+
   const setField = (field: string, value: any) => {
     onChange({ ...post, [field]: value });
   };
@@ -427,12 +483,14 @@ function BlogEditor({ post, onChange, onSave, onCancel }: any) {
                        <div className="text-gray-400 text-center py-10 italic">Hãy thêm các khối (blocks) nội dung từ menu phía trên.</div>
                     )}
                     {post.blocks?.map((block: any, index: number) => (
-                      <div key={block.id} className="relative group border border-transparent hover:border-gray-200 p-2 -mx-2 bg-white">
-                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 bg-white border border-gray-200 shadow-sm rounded-sm p-1 z-10">
-                            <button onClick={() => moveBlock(index, -1)} disabled={index===0} className="p-1 hover:bg-gray-100 disabled:opacity-30"><ChevronUp size={14} /></button>
-                            <button onClick={() => moveBlock(index, 1)} disabled={index===post.blocks.length-1} className="p-1 hover:bg-gray-100 disabled:opacity-30"><ChevronDown size={14} /></button>
-                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                            <button onClick={() => removeBlock(index)} className="p-1 text-red-500 hover:bg-red-50"><Trash2 size={14} /></button>
+                      <div key={block.id} className="relative group border border-gray-200 hover:border-blue-400 p-4 bg-white rounded-md mt-4 transition-colors">
+                         <div className="absolute -top-3 right-4 flex items-center gap-1 bg-white border border-gray-200 shadow-sm rounded-md p-0.5 z-10">
+                            <div className="flex bg-gray-50 rounded-sm">
+                               <button onClick={() => moveBlock(index, -1)} disabled={index===0} className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-gray-200 disabled:opacity-30 transition-colors" title="Lên trên"><ChevronUp size={16} /></button>
+                               <button onClick={() => moveBlock(index, 1)} disabled={index===post.blocks.length-1} className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-gray-200 disabled:opacity-30 transition-colors" title="Xuống dưới"><ChevronDown size={16} /></button>
+                            </div>
+                            <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                            <button onClick={() => removeBlock(index)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-sm transition-colors" title="Xóa khối"><Trash2 size={16} /></button>
                          </div>
                          <BlockEditor block={block} onChange={(data: any) => updateBlock(index, data)} onUpload={handleImageUpload} />
                       </div>
