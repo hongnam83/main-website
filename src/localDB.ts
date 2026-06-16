@@ -71,6 +71,20 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const HAS_SUPABASE = !!process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co';
 
+const getMemData = (path: string) => {
+  if (typeof window !== 'undefined') {
+    const raw = localStorage.getItem('localDB_data_' + path);
+    if (raw) return JSON.parse(raw);
+  }
+  return DEFAULTS_MAP[path] || [];
+};
+
+const setMemData = (path: string, data: any[]) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('localDB_data_' + path, JSON.stringify(data));
+  }
+};
+
 export const getDocs = async (collectionRef: any) => {
   let data: any[] = [];
   if (HAS_SUPABASE) {
@@ -83,6 +97,8 @@ export const getDocs = async (collectionRef: any) => {
     } catch (e) {
       console.error(e);
     }
+  } else {
+    data = getMemData(collectionRef.path);
   }
 
   // Merge with defaults
@@ -114,6 +130,9 @@ export const getDoc = async (docRef: any) => {
            .single();
         if (!error && resData) data = resData;
     } catch (e) {}
+  } else {
+    const localDocs = getMemData(docRef.path);
+    data = localDocs.find((d: any) => d.id === docRef.id) || null;
   }
 
   // Fallback to defaults
@@ -136,6 +155,15 @@ export const getDoc = async (docRef: any) => {
 
 export const setDoc = async (docRef: any, data: any, options?: any) => {
   if (!HAS_SUPABASE) {
+      let list = getMemData(docRef.path);
+      const existing = list.findIndex((item:any) => item.id === docRef.id);
+      const payload = { ...data, id: docRef.id };
+      if (existing !== -1) {
+          list[existing] = { ...list[existing], ...payload };
+      } else {
+          list.push(payload);
+      }
+      setMemData(docRef.path, list);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('localDB_updated'));
         localStorage.setItem('localDB_updated_event', Date.now().toString());
@@ -164,6 +192,12 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
 
 export const deleteDoc = async (docRef: any) => {
   if (!HAS_SUPABASE) {
+      let list = getMemData(docRef.path);
+      const existing = list.findIndex((item:any) => item.id === docRef.id);
+      if (existing !== -1) {
+          list[existing]._deleted = true;
+          setMemData(docRef.path, list);
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('localDB_updated'));
         localStorage.setItem('localDB_updated_event', Date.now().toString());

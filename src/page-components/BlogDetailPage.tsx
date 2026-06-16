@@ -287,7 +287,7 @@ function BlockRenderer({ blocks, showTOC }: { blocks: any[], showTOC?: boolean }
                   </h3>
                 );
               case 'p':
-                 return <p key={block.id} className="mb-4 whitespace-pre-wrap">{data.text}</p>;
+                 return <div key={block.id} className="mb-4 prose prose-lg max-w-none text-gray-800 ql-editor" dangerouslySetInnerHTML={{ __html: data.text || '' }} />;
               case 'ul':
                  return (
                    <ul key={block.id} className="list-disc pl-6 mb-4 space-y-2">

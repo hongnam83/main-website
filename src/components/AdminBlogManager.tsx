@@ -1,15 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getDocs, getDoc } from '../localDB';
-import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Check, X, Image as ImageIcon, Settings, Eye, Globe } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Check, X, Image as ImageIcon, Settings, Eye, Globe, RotateCcw } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
+import Quill from 'quill';
+import 'quill/dist/quill.snow.css';
+
+function QuillEditor({ value, onChange, placeholder }: any) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const quillRef = useRef<Quill | null>(null);
+  // To avoid onChange loop, track current value
+  const valueRef = useRef(value);
+
+  useEffect(() => {
+    if (containerRef.current && !quillRef.current) {
+      quillRef.current = new Quill(containerRef.current, {
+        theme: 'snow',
+        placeholder: placeholder || '',
+        modules: {
+          toolbar: [
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'font': [] }],
+            [{ 'align': [] }],
+            ['clean']
+          ]
+        }
+      });
+      quillRef.current.on('text-change', () => {
+        if (quillRef.current) {
+          const html = quillRef.current.root.innerHTML;
+          valueRef.current = html;
+          onChange(html);
+        }
+      });
+      if (value) {
+         quillRef.current.root.innerHTML = value;
+         valueRef.current = value;
+      }
+    }
+  }, []);
+
+  return <div ref={containerRef} className="w-full text-base [&_.ql-editor]:min-h-[150px] font-sans border-0" />;
+}
 
 export default function AdminBlogManager() {
   const [posts, setPosts] = useState<any[]>([]);
   const [editingPost, setEditingPost] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentTab, setCurrentTab] = useState<'published' | 'draft' | 'trash'>('published');
 
   useEffect(() => {
     fetchPosts();
@@ -20,6 +61,22 @@ export default function AdminBlogManager() {
     try {
       const snapshot = await getDocs(collection(db, 'blogPosts'));
       let data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Clean up posts in trash older than 7 days
+      const now = new Date();
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      data = await Promise.all(data.map(async (p: any) => {
+         if (p.status === 'trash' && p.deletedAt) {
+            const deletedTime = new Date(p.deletedAt).getTime();
+            if (now.getTime() - deletedTime > SEVEN_DAYS) {
+               await deleteDoc(doc(db, 'blogPosts', p.id));
+               return null;
+            }
+         }
+         return p;
+      }));
+      data = data.filter(Boolean);
+
       setPosts(data);
     } catch(e) {
       console.error(e);
@@ -64,7 +121,7 @@ export default function AdminBlogManager() {
     setIsCreating(false);
   };
 
-  const handleSave = async (forceStatus?: 'draft' | 'published') => {
+  const handleSave = async (forceStatus?: 'draft' | 'published' | 'trash') => {
     if (!editingPost.title) return alert("Vui lòng nhập tiêu đề");
     if (!editingPost.slug) return alert("Vui lòng nhập đường dẫn (slug)");
 
@@ -72,7 +129,8 @@ export default function AdminBlogManager() {
     const updateData = { 
         ...editingPost, 
         id: postId,
-        status: forceStatus || editingPost.status 
+        status: forceStatus || editingPost.status,
+        ...(forceStatus === 'trash' ? { deletedAt: new Date().toISOString() } : {})
     };
 
     try {
@@ -110,6 +168,26 @@ export default function AdminBlogManager() {
     }
   };
 
+  const handleMoveToTrash = async (post: any) => {
+     try {
+        await setDoc(doc(db, 'blogPosts', post.id), { ...post, status: 'trash', deletedAt: new Date().toISOString() }, { merge: true });
+        fetchPosts();
+     } catch (e) {
+        console.error(e);
+     }
+  };
+
+  const handleRestore = async (post: any) => {
+     try {
+        const updateData = { ...post, status: 'draft' };
+        delete updateData.deletedAt;
+        await setDoc(doc(db, 'blogPosts', post.id), updateData, { merge: true });
+        fetchPosts();
+     } catch (e) {
+        console.error(e);
+     }
+  };
+
   if (loading) return <div className="p-8 text-center text-gray-500">Đang tải danh sách bài viết...</div>;
 
   if (editingPost) {
@@ -123,6 +201,8 @@ export default function AdminBlogManager() {
     );
   }
 
+  const activePosts = posts.filter(p => currentTab === 'published' ? p.status === 'published' : currentTab === 'draft' ? p.status === 'draft' : p.status === 'trash');
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -133,10 +213,32 @@ export default function AdminBlogManager() {
       </div>
 
       <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 bg-gray-50 px-4">
+           <button 
+             onClick={() => setCurrentTab('published')} 
+             className={`p-3 font-medium text-sm border-b-2 mr-4 ${currentTab === 'published' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}
+           >
+             Đã xuất bản ({posts.filter(p => p.status === 'published').length})
+           </button>
+           <button 
+             onClick={() => setCurrentTab('draft')} 
+             className={`p-3 font-medium text-sm border-b-2 mr-4 ${currentTab === 'draft' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}
+           >
+             Bản nháp ({posts.filter(p => p.status === 'draft').length})
+           </button>
+           <button 
+             onClick={() => setCurrentTab('trash')} 
+             className={`p-3 font-medium text-sm border-b-2 flex items-center gap-1 ${currentTab === 'trash' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}
+           >
+             <Trash2 size={16} /> Thùng rác ({posts.filter(p => p.status === 'trash').length})
+           </button>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-sm">
+              <tr className="bg-white border-b border-gray-200 text-sm">
                 <th className="p-4 font-semibold text-gray-700">Tiêu đề / Bài viết</th>
                 <th className="p-4 font-semibold text-gray-700">Trạng thái</th>
                 <th className="p-4 font-semibold text-gray-700">Chuyên mục</th>
@@ -144,27 +246,41 @@ export default function AdminBlogManager() {
               </tr>
             </thead>
             <tbody>
-              {posts.map(post => (
+              {activePosts.map(post => (
                 <tr key={post.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                   <td className="p-4">
-                    <div className="font-bold text-blue-600 hover:underline cursor-pointer" onClick={() => handleEdit(post)}>{post.title}</div>
+                    <div className="font-bold text-blue-600 hover:underline cursor-pointer" onClick={() => post.status !== 'trash' && handleEdit(post)}>{post.title}</div>
                     <div className="text-sm text-gray-500 mt-1">{post.slug}</div>
+                    {post.status === 'trash' && post.deletedAt && (
+                      <div className="text-xs text-red-500 mt-1 italic">Đã xóa vào: {new Date(post.deletedAt).toLocaleDateString('vi-VN')} (Sẽ bị xóa vĩnh viễn sau 7 ngày)</div>
+                    )}
                   </td>
                   <td className="p-4">
-                     <span className={`px-2 py-1 text-xs font-bold rounded-sm ${post.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
-                        {post.status === 'published' ? 'Đã xuất bản' : 'Bản nháp'}
+                     <span className={`px-2 py-1 text-xs font-bold rounded-sm ${post.status === 'published' ? 'bg-green-100 text-green-800' : post.status === 'trash' ? 'bg-red-100 text-red-800' : 'bg-gray-200 text-gray-700'}`}>
+                        {post.status === 'published' ? 'Đã xuất bản' : post.status === 'trash' ? 'Thùng rác' : 'Bản nháp'}
                      </span>
                   </td>
                   <td className="p-4 text-sm text-gray-700">{post.category || '—'}</td>
                   <td className="p-4 text-right">
-                    <button onClick={() => handleEdit(post)} className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-3">Chỉnh sửa</button>
-                    <button onClick={() => handleDelete(post.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Xóa vĩnh viễn</button>
+                    {post.status !== 'trash' ? (
+                       <>
+                         <button onClick={() => handleEdit(post)} className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-3">Chỉnh sửa</button>
+                         <button onClick={() => handleMoveToTrash(post)} className="text-red-500 hover:text-red-700 text-sm font-medium">Xóa</button>
+                       </>
+                    ) : (
+                       <>
+                         <button onClick={() => handleRestore(post)} className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1 ml-auto mr-3 inline-flex">
+                            <RotateCcw size={14} /> Khôi phục
+                         </button>
+                         <button onClick={() => handleDelete(post.id)} className="text-red-500 hover:text-red-700 text-sm font-medium inline-block mt-3">Xóa vĩnh viễn</button>
+                       </>
+                    )}
                   </td>
                 </tr>
               ))}
-              {posts.length === 0 && (
+              {activePosts.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-500">Chưa có bài viết nào được tạo.</td>
+                  <td colSpan={4} className="p-8 text-center text-gray-500">Không có bài viết nào trong mục này.</td>
                 </tr>
               )}
             </tbody>
@@ -291,9 +407,9 @@ function BlogEditor({ post, onChange, onSave, onCancel }: any) {
                </div>
 
                {/* Editor Blocks */}
-               <div className="border border-gray-300">
-                  <div className="bg-gray-50 border-b border-gray-300 p-2 flex flex-wrap gap-1">
-                     <span className="text-sm font-medium text-gray-600 px-2 line-height-[24px]">Thêm nội dung:</span>
+               <div className="border border-gray-300 relative">
+                  <div className="bg-gray-50 border-b border-gray-300 p-2 flex flex-wrap gap-1 sticky top-0 z-50 shadow-sm">
+                     <span className="text-sm font-medium text-gray-600 px-2 leading-[24px]">Thêm nội dung:</span>
                      {BLOCK_TYPES.map(type => (
                        <button key={type.id} onClick={() => addBlock(type.id)} className="px-2 py-1 bg-white border border-gray-300 text-xs text-gray-700 hover:bg-gray-100 transition shadow-sm">
                          {type.label}
@@ -358,7 +474,7 @@ function BlogEditor({ post, onChange, onSave, onCancel }: any) {
                       <span className="flex items-center gap-2 text-gray-600"><Globe size={16}/> Hiển thị: <strong>Công khai</strong></span>
                    </div>
                    <div className="pt-3 flex justify-between border-t border-gray-100">
-                      <button onClick={() => onSave('draft')} className="text-red-500 hover:underline text-sm font-medium">Bỏ vào thùng rác</button>
+                      <button onClick={() => onSave('trash')} className="text-red-500 hover:underline text-sm font-medium">Bỏ vào thùng rác</button>
                       <button onClick={() => onSave('published')} className="bg-blue-600 text-white px-4 py-1.5 rounded shadow text-sm font-medium hover:bg-blue-700">
                         Cập nhật
                       </button>
@@ -503,7 +619,15 @@ function BlockEditor({ block, onChange, onUpload }: any) {
     case 'h3':
       return <input type="text" value={block.data.text} onChange={e => handleChange('text', e.target.value)} className="w-full text-xl font-bold outline-none placeholder-gray-300" placeholder="Nhập tiêu đề Heading 3" />;
     case 'p':
-      return <div className="border border-gray-300"><textarea value={block.data.text} onChange={e => handleChange('text', e.target.value)} className="w-full min-h-[120px] p-2 outline-none resize-y text-base" placeholder="Nhập nội dung văn bản..." /></div>;
+      return (
+        <div className="border border-gray-300 bg-white">
+          <QuillEditor 
+             value={block.data.text || ''} 
+             onChange={(val: any) => handleChange('text', val)} 
+             placeholder="Nhập nội dung văn bản..."
+          />
+        </div>
+      );
     
     case 'ul':
     case 'ol':
