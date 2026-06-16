@@ -180,6 +180,7 @@ const BLOCK_TYPES = [
   { id: 'h3', label: 'Heading 3 (H3)' },
   { id: 'p', label: 'Đoạn văn (Paragraph)' },
   { id: 'image', label: 'Ảnh đơn' },
+  { id: 'toc', label: 'Khối Mục lục (TOC)' },
   { id: 'ul', label: 'Danh sách gạch đầu dòng' },
   { id: 'ol', label: 'Danh sách đánh số' },
   { id: 'table', label: 'Bảng dữ liệu' },
@@ -468,6 +469,8 @@ function getDefaultDataForBlock(type: string) {
       return { title: '', content: '' };
     case 'image':
       return { url: '', alt: '' };
+    case 'toc':
+      return { style: 'default' };
     case 'figure':
       return { url: '', alt: '', caption: '' };
     case 'image-text':
@@ -532,6 +535,13 @@ function BlockEditor({ block, onChange, onUpload }: any) {
          <div className={`p-4 border-l-4 ${block.type === 'note' ? 'bg-blue-50 border-blue-500' : block.type === 'warning' ? 'bg-amber-50 border-amber-500' : 'bg-green-50 border-green-500'}`}>
             <input type="text" value={block.data.title} onChange={e => handleChange('title', e.target.value)} className="w-full bg-transparent font-bold text-gray-800 outline-none mb-1 placeholder-gray-500" placeholder="Tiêu đề khối (tuỳ chọn)" />
             <textarea value={block.data.content} onChange={e => handleChange('content', e.target.value)} className="w-full h-16 bg-transparent outline-none resize-y placeholder-gray-500" placeholder="Nội dung thông báo..." />
+         </div>
+      );
+
+    case 'toc':
+      return (
+         <div className="p-4 border border-blue-200 bg-blue-50 text-blue-800 rounded text-center text-sm font-medium shadow-sm">
+            📌 Khối Mục Lục (TOC) - Danh sách các mục H2, H3 sẽ tự động được hiển thị tại vị trí này để người đọc dễ dàng theo dõi.
          </div>
       );
 

@@ -220,7 +220,7 @@ function BlockRenderer({ blocks, showTOC }: { blocks: any[], showTOC?: boolean }
 
   return (
     <div className="space-y-8 font-sans">
-       {showTOC !== false && tocEntries.length > 0 && (
+       {showTOC !== false && tocEntries.length > 0 && !blocks.find(b => b.type === 'toc') && (
          <div className="bg-gray-50 p-6 md:p-8 rounded-2xl border border-gray-100 mb-10">
            <h3 className="text-xl font-bold font-serif mb-4 flex items-center gap-2 text-gray-900">
              Mục lục bài viết
@@ -249,6 +249,29 @@ function BlockRenderer({ blocks, showTOC }: { blocks: any[], showTOC?: boolean }
             const tocEntry = tocEntries.find(t => t.id === block.id);
 
             switch(block.type) {
+              case 'toc':
+                  if (tocEntries.length === 0) return null;
+                  return (
+                    <div key={block.id} className="bg-gray-50 p-6 md:p-8 rounded-2xl border border-gray-100 my-10 w-full">
+                       <h3 className="text-xl font-bold font-serif mb-4 flex items-center gap-2 text-gray-900">
+                         Mục lục bài viết
+                       </h3>
+                       <ul className="space-y-3">
+                         {tocEntries.map((entry, i) => (
+                           <li key={i} className={`${entry.level === 3 ? 'ml-6' : ''}`}>
+                             <a 
+                               href={`#block-${entry.id}`}
+                               onClick={(e) => scrollToElement(e, entry.id)}
+                               className={`flex hover:text-brand-700 transition-colors ${entry.level === 2 ? 'text-gray-900 font-medium' : 'text-gray-600'}`}
+                             >
+                               <span className="text-brand-600 mr-2 min-w-[24px] font-mono shrink-0">{entry.number}.</span>
+                               <span>{entry.title}</span>
+                             </a>
+                           </li>
+                         ))}
+                       </ul>
+                    </div>
+                  );
               case 'h2':
                 return (
                   <h2 id={`block-${block.id}`} key={block.id} className="text-3xl font-bold text-gray-900 mt-12 mb-6 scroll-mt-24">
