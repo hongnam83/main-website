@@ -16,7 +16,7 @@ export default function Hero() {
       <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-[600px] h-[600px] bg-brand-300/40 rounded-full blur-3xl opacity-50 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full h-full flex items-center">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-6 items-center w-full">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center w-full">
           
           {/* Content */}
           <motion.div 
@@ -27,7 +27,7 @@ export default function Hero() {
           >
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-md text-brand-800 font-semibold text-sm mb-6 border border-brand-200/50 shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-100/60 backdrop-blur-md text-brand-800 font-semibold text-sm mb-6"
             >
               <ShieldCheck className="w-5 h-5 text-brand-500" />
               <span className="tracking-wide uppercase text-xs">{t('Chuyên gia chăm sóc răng niềng', 'Chuyên gia chăm sóc răng niềng')}</span>
@@ -53,7 +53,7 @@ export default function Hero() {
               </Link>
               <a
                 href="#routine"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-brand-800 bg-white/50 backdrop-blur-sm border border-brand-200 hover:bg-white rounded-full shadow-sm hover:shadow-md transition-all"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-brand-800 bg-white hover:bg-gray-50 rounded-full shadow-sm hover:shadow-md transition-all border border-brand-100"
               >
                 {t('Xem Chu Trình Chuẩn', 'Xem Chu Trình Chuẩn')}
               </a>
@@ -111,7 +111,7 @@ export default function Hero() {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.6, duration: 0.5 }}
-                className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/50"
+                className="absolute bottom-6 left-6 right-auto pr-8 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white flex"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center shrink-0">

@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { getDocs, getDoc } from '../localDB';
+import { db, doc, getDoc, setDoc, collection, getDocs, deleteDoc } from '../localDB';
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Check, X, Image as ImageIcon, Settings, Eye, Globe, RotateCcw } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import type QuillType from 'quill';
