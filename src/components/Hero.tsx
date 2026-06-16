@@ -16,7 +16,7 @@ export default function Hero() {
       <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-[600px] h-[600px] bg-brand-300/40 rounded-full blur-3xl opacity-50 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full h-full flex items-center">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center w-full">
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-12 items-center w-full">
           
           {/* Content */}
           <motion.div 
@@ -27,15 +27,15 @@ export default function Hero() {
           >
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-100/60 backdrop-blur-md text-brand-800 font-semibold text-sm mb-6"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-100/60 backdrop-blur-md text-brand-800 font-medium text-sm mb-6"
             >
-              <ShieldCheck className="w-5 h-5 text-brand-500" />
-              <span className="tracking-wide uppercase text-xs">{t('Chuyên gia chăm sóc răng niềng', 'Chuyên gia chăm sóc răng niềng')}</span>
+              <ShieldCheck className="w-5 h-5 text-brand-700" />
+              <span className="tracking-wide text-sm">{t('Chuyên gia chăm sóc răng niềng', 'Chuyên gia chăm sóc răng niềng')}</span>
             </motion.div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-gray-900 mb-6 leading-[1.15]">
+            <h1 className="text-4xl md:text-5xl lg:text-[4rem] xl:text-[4.5rem] font-bold tracking-tight text-brand-950 mb-6 leading-[1.15]">
               {t('Nụ Cười Hoàn Mỹ')} <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-800 font-serif italic pr-2">{t('Dành Riêng Cho')}</span><br />
+              <span className="text-[#3DCAA0] font-serif italic pr-2">{t('Dành Riêng Cho')}</span><br />
               {t('Team Niềng Răng')}
             </h1>
             
@@ -46,14 +46,14 @@ export default function Hero() {
             <div className="flex flex-col sm:flex-row gap-4 mb-10">
               <Link
                 href="/products"
-                className="group inline-flex items-center justify-center px-8 py-4 text-base font-medium text-white bg-gradient-to-r from-brand-800 to-brand-600 hover:from-brand-900 hover:to-brand-700 rounded-full transition-all shadow-lg hover:shadow-brand-800/30 hover:-translate-y-0.5"
+                className="group inline-flex items-center justify-center px-8 py-4 text-base font-medium text-white bg-brand-800 hover:bg-brand-900 rounded-full transition-all shadow-sm"
               >
-                {t('Khám Phá Sản Phẩm', 'Khám Phá Sản Phẩm')}
+                {t('Xem Danh Mục Sản Phẩm', 'Xem Danh Mục Sản Phẩm')}
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
               <a
                 href="#routine"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-brand-800 bg-white hover:bg-gray-50 rounded-full shadow-sm hover:shadow-md transition-all border border-brand-100"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-brand-800 bg-white border border-brand-200 hover:bg-gray-50 rounded-full shadow-sm hover:shadow-md transition-all"
               >
                 {t('Xem Chu Trình Chuẩn', 'Xem Chu Trình Chuẩn')}
               </a>
