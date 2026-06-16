@@ -54,7 +54,11 @@ function QuillEditor({ value, onChange, placeholder }: any) {
     }
   }, []);
 
-  return <div ref={containerRef} className="w-full text-base [&_.ql-editor]:min-h-[150px] font-sans border-0" />;
+  return (
+    <div className="w-full text-base [&_.ql-editor]:min-h-[150px] font-sans border-0">
+      <div ref={containerRef} />
+    </div>
+  );
 }
 
 export default function AdminBlogManager() {
@@ -136,11 +140,13 @@ export default function AdminBlogManager() {
   const handleSave = async (forceStatus?: 'draft' | 'published' | 'trash', isBackgroundMode = false) => {
     if (!editingPost.title) {
        if (isBackgroundMode) return;
-       return alert("Vui lòng nhập tiêu đề");
+       try { window.alert("Vui lòng nhập tiêu đề"); } catch(e) {}
+       return;
     }
     if (!editingPost.slug) {
        if (isBackgroundMode) return;
-       return alert("Vui lòng nhập đường dẫn (slug)");
+       try { window.alert("Vui lòng nhập đường dẫn (slug)"); } catch(e) {}
+       return;
     }
 
     const postId = editingPost.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -156,7 +162,7 @@ export default function AdminBlogManager() {
          const existing = await getDoc(doc(db, 'blogPosts', postId));
          if (existing.exists()) {
             if (isBackgroundMode) return;
-            alert("Đường dẫn này đã tồn tại, vui lòng chọn đường dẫn khác.");
+            try { window.alert("Đường dẫn này đã tồn tại, vui lòng chọn đường dẫn khác."); } catch(e) {}
             return;
          }
       }
@@ -177,12 +183,19 @@ export default function AdminBlogManager() {
       }
     } catch (e) {
       console.error("Error saving post", e);
-      if (!isBackgroundMode) alert("Đã xảy ra lỗi khi lưu");
+      if (!isBackgroundMode) {
+         try { window.alert("Đã xảy ra lỗi khi lưu"); } catch(e) {}
+      }
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa bài viết này không? Tổn thất này không thể phục hồi!')) {
+    let confirmed = false;
+    try {
+       confirmed = window.confirm('Bạn có chắc chắn muốn xóa bài viết này không? Tổn thất này không thể phục hồi!');
+    } catch(e) { confirmed = true; } // Fallback if blocked
+    
+    if (confirmed) {
       try {
         await deleteDoc(doc(db, 'blogPosts', id));
         fetchPosts();
@@ -382,12 +395,12 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
 
   const updateBlock = (index: number, data: any) => {
     const newBlocks = [...post.blocks];
-    newBlocks[index].data = data;
+    newBlocks[index] = { ...newBlocks[index], data };
     setField('blocks', newBlocks);
   };
 
   const removeBlock = (index: number) => {
-    if (confirm('Xóa khối (block) này?')) {
+    if (window.confirm('Xóa khối (block) này?')) {
       const newBlocks = [...post.blocks];
       newBlocks.splice(index, 1);
       setField('blocks', newBlocks);

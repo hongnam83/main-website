@@ -82,7 +82,7 @@ export default function AdminTestimonialsManager() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa Lời tâm sự này?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa Lời tâm sự này?')) {
       await deleteDoc(doc(db, 'testimonials', id));
       fetchTestimonials();
     }
@@ -109,7 +109,7 @@ export default function AdminTestimonialsManager() {
         setFormData({ ...formData, image: compressed });
       } catch (err) {
         console.error("Error compressing image", err);
-        alert('Có lỗi xảy ra khi nén ảnh.');
+        window.alert('Có lỗi xảy ra khi nén ảnh.');
       }
     }
   };
