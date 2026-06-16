@@ -4,41 +4,46 @@ import { db } from '../firebase';
 import { getDocs, getDoc } from '../localDB';
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Check, X, Image as ImageIcon, Settings, Eye, Globe, RotateCcw } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
-import Quill from 'quill';
+import type QuillType from 'quill';
 import 'quill/dist/quill.snow.css';
 
 function QuillEditor({ value, onChange, placeholder }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const quillRef = useRef<Quill | null>(null);
+  const quillRef = useRef<any>(null);
   // To avoid onChange loop, track current value
   const valueRef = useRef(value);
 
   useEffect(() => {
-    if (containerRef.current && !quillRef.current) {
-      quillRef.current = new Quill(containerRef.current, {
-        theme: 'snow',
-        placeholder: placeholder || '',
-        modules: {
-          toolbar: [
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ 'color': [] }, { 'background': [] }],
-            [{ 'font': [] }],
-            [{ 'align': [] }],
-            ['clean']
-          ]
+    if (typeof window !== 'undefined') {
+      import('quill').then((QuillModule) => {
+        const Quill = QuillModule.default || QuillModule;
+        if (containerRef.current && !quillRef.current) {
+          quillRef.current = new (Quill as any)(containerRef.current, {
+            theme: 'snow',
+            placeholder: placeholder || '',
+            modules: {
+              toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'font': [] }],
+                [{ 'align': [] }],
+                ['clean']
+              ]
+            }
+          });
+          quillRef.current.on('text-change', () => {
+            if (quillRef.current) {
+              const html = quillRef.current.root.innerHTML;
+              valueRef.current = html;
+              onChange(html);
+            }
+          });
+          if (value) {
+             quillRef.current.root.innerHTML = value;
+             valueRef.current = value;
+          }
         }
       });
-      quillRef.current.on('text-change', () => {
-        if (quillRef.current) {
-          const html = quillRef.current.root.innerHTML;
-          valueRef.current = html;
-          onChange(html);
-        }
-      });
-      if (value) {
-         quillRef.current.root.innerHTML = value;
-         valueRef.current = value;
-      }
     }
   }, []);
 
