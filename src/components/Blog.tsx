@@ -15,8 +15,8 @@ export default function Blog() {
     const fetchPosts = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'blogPosts'));
-        let posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        posts = posts.filter((p: any) => p.status === 'published');
+        let posts = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        posts = posts.filter((p: any) => p.status === 'published' || !p.status);
         if (posts.length > 0) setBlogPosts(posts);
       } catch (err) {}
     };

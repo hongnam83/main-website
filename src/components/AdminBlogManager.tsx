@@ -150,26 +150,21 @@ export default function AdminBlogManager() {
     }
 
     const postId = editingPost.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const statusToSave = forceStatus || editingPost.status;
+    const currentDate = new Date().toLocaleDateString('vi-VN', {
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric'
+    });
     
-    let currentDate = editingPost.date;
-    if (!currentDate && statusToSave === 'published') {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        let mm: any = today.getMonth() + 1;
-        let dd: any = today.getDate();
-        if (dd < 10) dd = '0' + dd;
-        if (mm < 10) mm = '0' + mm;
-        currentDate = dd + '/' + mm + '/' + yyyy;
-    }
+    const isPublishing = forceStatus === 'published' || (!forceStatus && editingPost.status === 'published');
 
     const updateData = { 
         ...editingPost, 
         id: postId,
-        status: statusToSave,
-        date: currentDate,
-        ...(statusToSave === 'trash' ? { deletedAt: new Date().toISOString() } : {}),
-        ...(statusToSave === 'published' ? { createdAt: Date.now() } : {})
+        status: forceStatus || editingPost.status,
+        date: editingPost.date || currentDate,
+        ...(isPublishing ? { published_at: new Date().toISOString() } : {}),
+        ...(forceStatus === 'trash' ? { deletedAt: new Date().toISOString() } : {})
     };
 
     try {
@@ -194,12 +189,12 @@ export default function AdminBlogManager() {
          fetchPosts();
       } else {
          setIsCreating(false);
-         setEditingPost((prev: any) => ({...prev, id: postId, status: statusToSave, date: currentDate}));
+         setEditingPost((prev: any) => ({...prev, id: postId}));
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error("Error saving post", e);
       if (!isBackgroundMode) {
-         try { window.alert(`Đã xảy ra lỗi khi lưu: ${e.message || 'Lỗi không xác định'}`); } catch(err) {}
+         try { window.alert("Đã xảy ra lỗi khi lưu"); } catch(e) {}
       }
     }
   };
@@ -453,7 +448,7 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
               Lưu nháp
             </button>
             <button onClick={() => onSave('published')} className="px-6 py-1.5 bg-blue-600 text-white text-sm font-medium rounded shadow hover:bg-blue-700 transition">
-              Cập nhật
+              Đăng bài
             </button>
           </div>
         </div>
@@ -565,7 +560,7 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
                    <div className="pt-3 flex justify-between border-t border-gray-100">
                       <button onClick={() => onSave('trash')} className="text-red-500 hover:underline text-sm font-medium">Bỏ vào thùng rác</button>
                       <button onClick={() => onSave('published')} className="bg-blue-600 text-white px-4 py-1.5 rounded shadow text-sm font-medium hover:bg-blue-700">
-                        Cập nhật
+                        Đăng bài
                       </button>
                    </div>
                 </div>
