@@ -150,11 +150,26 @@ export default function AdminBlogManager() {
     }
 
     const postId = editingPost.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const statusToSave = forceStatus || editingPost.status;
+    
+    let currentDate = editingPost.date;
+    if (!currentDate && statusToSave === 'published') {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        let mm: any = today.getMonth() + 1;
+        let dd: any = today.getDate();
+        if (dd < 10) dd = '0' + dd;
+        if (mm < 10) mm = '0' + mm;
+        currentDate = dd + '/' + mm + '/' + yyyy;
+    }
+
     const updateData = { 
         ...editingPost, 
         id: postId,
-        status: forceStatus || editingPost.status,
-        ...(forceStatus === 'trash' ? { deletedAt: new Date().toISOString() } : {})
+        status: statusToSave,
+        date: currentDate,
+        ...(statusToSave === 'trash' ? { deletedAt: new Date().toISOString() } : {}),
+        ...(statusToSave === 'published' ? { createdAt: Date.now() } : {})
     };
 
     try {
@@ -179,12 +194,12 @@ export default function AdminBlogManager() {
          fetchPosts();
       } else {
          setIsCreating(false);
-         setEditingPost((prev: any) => ({...prev, id: postId}));
+         setEditingPost((prev: any) => ({...prev, id: postId, status: statusToSave, date: currentDate}));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error saving post", e);
       if (!isBackgroundMode) {
-         try { window.alert("Đã xảy ra lỗi khi lưu"); } catch(e) {}
+         try { window.alert(`Đã xảy ra lỗi khi lưu: ${e.message || 'Lỗi không xác định'}`); } catch(err) {}
       }
     }
   };

@@ -9,13 +9,14 @@ import { blogPosts as defaultBlogPosts } from '../data/blogPosts';
 
 export default function Blog() {
   const { t, i18n } = useTranslation();
-  const [blogPosts, setBlogPosts] = useState<any[]>(defaultBlogPosts);
+  const [blogPosts, setBlogPosts] = useState<any[]>(() => defaultBlogPosts.filter((p: any) => p.status === 'published' || !p.status));
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'blogPosts'));
-        const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        posts = posts.filter((p: any) => p.status === 'published');
         if (posts.length > 0) setBlogPosts(posts);
       } catch (err) {}
     };

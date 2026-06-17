@@ -20,7 +20,7 @@ export default function BlogPage() {
       try {
         const snapshot = await getDocs(collection(db, 'blogPosts'));
         let posts = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-        posts = posts.filter((p: any) => p.status !== 'draft');
+        posts = posts.filter((p: any) => p.status === 'published');
         if (posts.length > 0) setBlogPosts(posts);
       } catch (err) {
         // console.warn('Firebase fetch failed:', err);
@@ -53,7 +53,7 @@ export default function BlogPage() {
   };
 
   // Ensure default data is also filtered if missing status
-  const filteredBlogPosts = blogPosts.filter((p: any) => p.status !== 'draft');
+  const filteredBlogPosts = blogPosts.filter((p: any) => p.status === 'published' || (!p.status));
 
   return (
     <main className="pt-24 pb-24 min-h-screen bg-gray-50">

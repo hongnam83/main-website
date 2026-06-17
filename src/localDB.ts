@@ -97,6 +97,20 @@ export const getDocs = async (collectionRef: any) => {
     } catch (e) {
       console.error(e);
     }
+    // Merge any failed-upsert objects from localStorage
+    const localDocs = getMemData(collectionRef.path);
+    if (localDocs.length > 0) {
+       const supaIds = new Set(data.map((d: any) => d.id));
+       const localMap = new Map(localDocs.map((d: any) => [d.id, d]));
+       // Override supabase docs with local fallback docs (since local is newer if upsert failed)
+       data = data.map((d: any) => localMap.has(d.id) ? { ...d, ...(localMap.get(d.id) as any) } : d);
+       // Add newly created local docs that couldn't be synced
+       for (const md of localDocs) {
+          if (!supaIds.has(md.id) && !md._deleted) {
+             data.push(md);
+          }
+       }
+    }
   } else {
     data = getMemData(collectionRef.path);
   }
@@ -128,7 +142,18 @@ export const getDoc = async (docRef: any) => {
            .select('*')
            .eq('id', docRef.id)
            .single();
-        if (!error && resData) data = resData;
+        if (!error && resData) {
+            data = resData;
+        }
+        
+        // Merge with local fallback
+        const localDocs = getMemData(docRef.path);
+        const localD = localDocs.find((d: any) => d.id === docRef.id);
+        if (localD && !localD._deleted) {
+           data = data ? { ...data, ...localD } : localD;
+        } else if (localD && localD._deleted) {
+           data = null;
+        }
     } catch (e) {}
   } else {
     const localDocs = getMemData(docRef.path);
@@ -170,23 +195,21 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
       }
       return;
   }
-  try {
-      const payload = { ...data, id: docRef.id };
-      
-      const { error } = await supabase
-        .from(docRef.path)
-        .upsert(payload);
-        
-      if (error) {
-         console.warn(`Supabase upsert failed: ${error.message}.`);
-      }
-      
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('localDB_updated'));
-        localStorage.setItem('localDB_updated_event', Date.now().toString());
-      }
-  } catch (e) {
-      console.error(e);
+  
+  let payload = { ...data, id: docRef.id };
+
+  const { error } = await supabase
+    .from(docRef.path)
+    .upsert(payload);
+    
+  if (error) {
+     console.error(`Supabase upsert failed for ${docRef.path}:`, error);
+     throw new Error(`Lỗi Supabase: ${error.message} - Chi tiết: ${JSON.stringify(error.details)}`);
+  }
+  
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('localDB_updated'));
+    localStorage.setItem('localDB_updated_event', Date.now().toString());
   }
 };
 
@@ -204,21 +227,20 @@ export const deleteDoc = async (docRef: any) => {
       }
       return;
   }
-  try {
-      const { error } = await supabase
-        .from(docRef.path)
-        .upsert({ id: docRef.id, _deleted: true });
-        
-      if (error) {
-        console.warn(`Supabase delete failed: ${error.message}.`);
-      }
-      
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('localDB_updated'));
-        localStorage.setItem('localDB_updated_event', Date.now().toString());
-      }
-  } catch (e) {
-      console.error(e);
+
+  const { error } = await supabase
+    .from(docRef.path)
+    .delete()
+    .eq('id', docRef.id);
+    
+  if (error) {
+    console.error(`Supabase delete failed for ${docRef.path}:`, error);
+    throw new Error(`Lỗi Supabase (xóa): ${error.message}`);
+  }
+  
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('localDB_updated'));
+    localStorage.setItem('localDB_updated_event', Date.now().toString());
   }
 };
 
