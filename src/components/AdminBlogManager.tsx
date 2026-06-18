@@ -178,8 +178,8 @@ export default function AdminBlogManager() {
       
       await setDoc(doc(db, 'blogPosts', postId), updateData, { merge: true });
       if (!isCreating && postId !== editingPost.id) {
-          // If slug changed, delete old one
-          await deleteDoc(doc(db, 'blogPosts', editingPost.id));
+          // If slug changed, instead of hard deleting (which makes defaults respawn), we mark as trash
+          await setDoc(doc(db, 'blogPosts', editingPost.id), { ...editingPost, status: 'trash' }, { merge: true });
       }
 
       if (!isBackgroundMode) {

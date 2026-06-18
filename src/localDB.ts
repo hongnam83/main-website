@@ -97,20 +97,10 @@ export const getDocs = async (collectionRef: any) => {
     } catch (e) {
       console.error(e);
     }
-    // Merge any failed-upsert objects from localStorage
-    const localDocs = getMemData(collectionRef.path);
-    if (localDocs.length > 0) {
-       const supaIds = new Set(data.map((d: any) => d.id));
-       const localMap = new Map(localDocs.map((d: any) => [d.id, d]));
-       // Override supabase docs with local fallback docs (since local is newer if upsert failed)
-       data = data.map((d: any) => localMap.has(d.id) ? { ...d, ...(localMap.get(d.id) as any) } : d);
-       // Add newly created local docs that couldn't be synced
-       for (const md of localDocs) {
-          if (!supaIds.has(md.id) && !md._deleted) {
-             data.push(md);
-          }
-       }
-    }
+    // Do not override with local fallback if Supabase is being used to prevent stale data
+    // local docs should only be used if HAS_SUPABASE is false.
+    // If you need migration, you can write a one-time migration script.
+    // Here we just use the data from Supabase directly.
   } else {
     data = getMemData(collectionRef.path);
   }
@@ -146,14 +136,8 @@ export const getDoc = async (docRef: any) => {
             data = resData;
         }
         
-        // Merge with local fallback
-        const localDocs = getMemData(docRef.path);
-        const localD = localDocs.find((d: any) => d.id === docRef.id);
-        if (localD && !localD._deleted) {
-           data = data ? { ...data, ...localD } : localD;
-        } else if (localD && localD._deleted) {
-           data = null;
-        }
+        // We do not merge local memory data because it can contain stale state 
+        // from before Supabase was connected.
     } catch (e) {}
   } else {
     const localDocs = getMemData(docRef.path);
