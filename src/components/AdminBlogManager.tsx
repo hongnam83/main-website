@@ -161,10 +161,8 @@ export default function AdminBlogManager() {
     const updateData = { 
         ...editingPost, 
         id: postId,
-        status: forceStatus || editingPost.status,
-        date: editingPost.date || currentDate,
-        ...(isPublishing ? { published_at: new Date().toISOString() } : {}),
-        ...(forceStatus === 'trash' ? { deletedAt: new Date().toISOString() } : {})
+        status: forceStatus || editingPost.status || 'draft',
+        date: editingPost.date || currentDate
     };
 
     try {
@@ -191,10 +189,10 @@ export default function AdminBlogManager() {
          setIsCreating(false);
          setEditingPost((prev: any) => ({...prev, id: postId}));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error saving post", e);
       if (!isBackgroundMode) {
-         try { window.alert("Đã xảy ra lỗi khi lưu"); } catch(e) {}
+         try { window.alert("Đã xảy ra lỗi khi lưu: " + (e.message || e)); } catch(err) {}
       }
     }
   };
