@@ -162,7 +162,8 @@ export default function AdminBlogManager() {
         ...editingPost, 
         id: postId,
         status: forceStatus || editingPost.status || 'draft',
-        date: editingPost.date || currentDate
+        date: editingPost.date || currentDate,
+        ...(isPublishing ? { published_at: new Date().toISOString() } : {})
     };
 
     try {
@@ -356,6 +357,7 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
   
   const autoSaveRef = useRef(onAutoSave);
   const postRef = useRef(post);
+  const isManuallySavingRef = useRef(false);
 
   useEffect(() => {
     autoSaveRef.current = onAutoSave;
@@ -364,7 +366,7 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (postRef.current?.status === 'draft') {
+      if (!isManuallySavingRef.current && postRef.current?.status === 'draft') {
         autoSaveRef.current?.('draft');
       }
     };
@@ -382,11 +384,16 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       clearInterval(intervalId);
       // Attempt to save when the component unmounts (e.g. user leaves page in SPA)
-      if (postRef.current?.status === 'draft' || !postRef.current?.id) {
+      if (!isManuallySavingRef.current && (postRef.current?.status === 'draft' || !postRef.current?.id)) {
          autoSaveRef.current?.('draft');
       }
     };
   }, []);
+
+  const handleManualSave = (status: 'draft' | 'published' | 'trash') => {
+     isManuallySavingRef.current = true;
+     onSave(status);
+  };
 
   const setField = (field: string, value: any) => {
     onChange({ ...post, [field]: value });
@@ -442,10 +449,10 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
              <h1 className="text-2xl font-normal text-gray-900">Chi tiết Bài viết</h1>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => onSave('draft')} className="px-4 py-1.5 border border-gray-400 bg-gray-50 text-gray-700 text-sm rounded hover:bg-gray-200 transition">
+            <button onClick={() => handleManualSave('draft')} className="px-4 py-1.5 border border-gray-400 bg-gray-50 text-gray-700 text-sm rounded hover:bg-gray-200 transition">
               Lưu nháp
             </button>
-            <button onClick={() => onSave('published')} className="px-6 py-1.5 bg-blue-600 text-white text-sm font-medium rounded shadow hover:bg-blue-700 transition">
+            <button onClick={() => handleManualSave('published')} className="px-6 py-1.5 bg-blue-600 text-white text-sm font-medium rounded shadow hover:bg-blue-700 transition">
               Đăng bài
             </button>
           </div>
@@ -556,8 +563,8 @@ function BlogEditor({ post, onChange, onSave, onAutoSave, onCancel }: any) {
                       <span className="flex items-center gap-2 text-gray-600"><Globe size={16}/> Hiển thị: <strong>Công khai</strong></span>
                    </div>
                    <div className="pt-3 flex justify-between border-t border-gray-100">
-                      <button onClick={() => onSave('trash')} className="text-red-500 hover:underline text-sm font-medium">Bỏ vào thùng rác</button>
-                      <button onClick={() => onSave('published')} className="bg-blue-600 text-white px-4 py-1.5 rounded shadow text-sm font-medium hover:bg-blue-700">
+                      <button onClick={() => handleManualSave('trash')} className="text-red-500 hover:underline text-sm font-medium">Bỏ vào thùng rác</button>
+                      <button onClick={() => handleManualSave('published')} className="bg-blue-600 text-white px-4 py-1.5 rounded shadow text-sm font-medium hover:bg-blue-700">
                         Đăng bài
                       </button>
                    </div>
