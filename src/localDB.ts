@@ -188,7 +188,11 @@ export const setDoc = async (docRef: any, data: any, options?: any) => {
     
   if (error) {
      console.error(`Supabase upsert failed for ${docRef.path}:`, error);
-     throw new Error(`Lỗi Supabase: ${error.message} - Chi tiết: ${JSON.stringify(error.details)}`);
+     const err = new Error(error.message);
+     (err as any).details = error.details;
+     (err as any).hint = error.hint;
+     (err as any).code = error.code;
+     throw err;
   }
   
   if (typeof window !== 'undefined') {

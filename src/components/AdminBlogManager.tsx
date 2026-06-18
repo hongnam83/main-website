@@ -92,6 +92,11 @@ export default function AdminBlogManager() {
          return p;
       }));
       data = data.filter(Boolean);
+      data.sort((a: any, b: any) => {
+         const timeA = a.createdAt || 0;
+         const timeB = b.createdAt || 0;
+         return timeB - timeA;
+      });
 
       setPosts(data);
     } catch(e) {
@@ -163,7 +168,7 @@ export default function AdminBlogManager() {
         id: postId,
         status: forceStatus || editingPost.status || 'draft',
         date: editingPost.date || currentDate,
-        ...(isPublishing ? { published_at: new Date().toISOString() } : {})
+        ...(isCreating ? { createdAt: Date.now() } : {})
     };
 
     try {
@@ -186,6 +191,7 @@ export default function AdminBlogManager() {
          setEditingPost(null);
          setIsCreating(false);
          fetchPosts();
+         try { window.alert(`Bài viết đã được ${isPublishing ? 'xuất bản' : 'lưu nháp'} thành công!`); } catch(e) {}
       } else {
          setIsCreating(false);
          setEditingPost((prev: any) => ({...prev, id: postId}));
@@ -193,7 +199,14 @@ export default function AdminBlogManager() {
     } catch (e: any) {
       console.error("Error saving post", e);
       if (!isBackgroundMode) {
-         try { window.alert("Đã xảy ra lỗi khi lưu: " + (e.message || e)); } catch(err) {}
+         const errorMsg = [
+           `Lỗi Supabase: ${e.message || 'Không xác định'}`,
+           e.details && `Chi tiết: ${e.details}`,
+           e.hint && `Gợi ý: ${e.hint}`,
+           e.code && `Mã lỗi: ${e.code}`
+         ].filter(Boolean).join('\n');
+         
+         try { window.alert("Đã xảy ra lỗi khi lưu:\n\n" + errorMsg); } catch(err) {}
       }
     }
   };
@@ -248,7 +261,7 @@ export default function AdminBlogManager() {
     );
   }
 
-  const activePosts = posts.filter(p => currentTab === 'published' ? p.status === 'published' : currentTab === 'draft' ? p.status === 'draft' : p.status === 'trash');
+  const activePosts = posts.filter(p => currentTab === 'published' ? (p.status === 'published' || !p.status) : currentTab === 'draft' ? p.status === 'draft' : p.status === 'trash');
 
   return (
     <div className="space-y-6">

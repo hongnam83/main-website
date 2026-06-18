@@ -21,6 +21,11 @@ export default function BlogPage() {
         const snapshot = await getDocs(collection(db, 'blogPosts'));
         let posts = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
         posts = posts.filter((p: any) => p.status === 'published' || !p.status); // Keep published posts and default posts
+        posts.sort((a: any, b: any) => {
+           const timeA = a.createdAt || 0;
+           const timeB = b.createdAt || 0;
+           return timeB - timeA;
+        });
         if (posts.length > 0) setBlogPosts(posts);
       } catch (err) {
         // console.warn('Firebase fetch failed:', err);
