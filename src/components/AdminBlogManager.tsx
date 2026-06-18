@@ -156,14 +156,11 @@ export default function AdminBlogManager() {
       year: 'numeric'
     });
     
-    const isPublishing = forceStatus === 'published' || (!forceStatus && editingPost.status === 'published');
-
     const updateData = { 
         ...editingPost, 
         id: postId,
         status: forceStatus || editingPost.status || 'draft',
-        date: editingPost.date || currentDate,
-        ...(isPublishing ? { published_at: new Date().toISOString() } : {})
+        date: editingPost.date || currentDate
     };
 
     try {
@@ -178,8 +175,8 @@ export default function AdminBlogManager() {
       
       await setDoc(doc(db, 'blogPosts', postId), updateData, { merge: true });
       if (!isCreating && postId !== editingPost.id) {
-          // If slug changed, instead of hard deleting (which makes defaults respawn), we mark as trash
-          await setDoc(doc(db, 'blogPosts', editingPost.id), { ...editingPost, status: 'trash' }, { merge: true });
+          // If slug changed, delete old one
+          await deleteDoc(doc(db, 'blogPosts', editingPost.id));
       }
 
       if (!isBackgroundMode) {
